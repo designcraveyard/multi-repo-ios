@@ -1,30 +1,36 @@
 /**
  * PhosphorIconHelper.swift
  *
- * SwiftUI convenience layer for Phosphor Icons.
+ * SwiftUI size-token layer for Phosphor Icons.
  *
  * Package: https://github.com/phosphor-icons/swift (PhosphorSwift, v2+)
  * Web counterpart: app/components/icons/Icon.tsx  (<Icon name="House" />)
  *
+ * ── How Phosphor Swift works ───────────────────────────────────────────────
+ *
+ * Icons are accessed as  Ph.<name>.<weight>  — each returns a SwiftUI View
+ * (an Image that is already .resizable()).  You then chain .color() and
+ * .frame() modifiers to style them.
+ *
+ * There is no generic "pass a name string" API in the Swift package — the
+ * icon name and weight are selected at the call site via static members.
+ * This is a deliberate design choice for type-safety and tree-shaking.
+ *
  * ── Usage ──────────────────────────────────────────────────────────────────
  *
- *   // Basic icon (regular weight, 20pt = md)
- *   PhosphorIcon(.house)
+ *   // Preferred: use PhosphorIconSize tokens for consistent sizing
+ *   Ph.house.regular.iconSize(.md)
+ *   Ph.heart.fill.iconSize(.lg).iconColor(.appError)
+ *   Ph.arrowRight.bold.iconSize(.sm)
  *
- *   // With weight
- *   PhosphorIcon(.heart, weight: .fill)
+ *   // With default color (inherits from environment)
+ *   Ph.bell.regular.iconSize(.md)
  *
- *   // With design-token size
- *   PhosphorIcon(.arrowRight, size: .lg)
+ *   // Accessible icon: chain .iconAccessibility(label:)
+ *   Ph.bell.regular.iconSize(.md).iconAccessibility(label: "Notifications")
  *
- *   // With explicit color token
- *   PhosphorIcon(.warning, weight: .bold, size: .sm, color: .appError)
- *
- *   // Accessible icon (adds accessibilityLabel)
- *   PhosphorIcon(.bell, label: "Notifications")
- *
- *   // Using raw Phosphor API (for custom/advanced cases)
- *   Ph.house.regular.color(.appPrimary).frame(width: 24, height: 24)
+ *   // Raw Phosphor API (when you need a custom non-token size)
+ *   Ph.house.regular.color(.appIconPrimary).frame(width: 18, height: 18)
  *
  * ── Size tokens (mirrors web IconSize) ─────────────────────────────────────
  *   .xs  = 12pt    .sm = 16pt    .md = 20pt (default)
@@ -53,129 +59,125 @@ public enum PhosphorIconSize: CGFloat {
     case xl  = 32
 }
 
-// MARK: - PhosphorIcon View
+// MARK: - View extension — sizing and color helpers
 
-/// Token-aligned SwiftUI wrapper for Phosphor Icons.
-///
-/// Mirrors the web `<Icon />` component API so both platforms
-/// use the same conceptual interface.
-public struct PhosphorIcon: View {
+public extension View {
 
-    // ── Stored properties ──────────────────────────────────────────────────
-
-    private let iconName: Ph.IconName
-    private let weight:   Ph.IconWeight
-    private let size:     CGFloat
-    private let color:    Color
-    private let label:    String?
-
-    // ── Initialisers ───────────────────────────────────────────────────────
-
-    /// - Parameters:
-    ///   - iconName: Phosphor icon name enum value (e.g. `.house`, `.arrowRight`)
-    ///   - weight:   Icon weight. Default: `.regular`
-    ///   - size:     Token-based size alias. Default: `.md` (20pt)
-    ///   - color:    SwiftUI Color. Default: `.primary` (inherits tint)
-    ///   - label:    Accessibility label. If `nil`, icon is decorative (hidden from VoiceOver).
-    public init(
-        _ iconName: Ph.IconName,
-        weight: Ph.IconWeight = .regular,
-        size:   PhosphorIconSize = .md,
-        color:  Color = .primary,
-        label:  String? = nil
-    ) {
-        self.iconName = iconName
-        self.weight   = weight
-        self.size     = size.rawValue
-        self.color    = color
-        self.label    = label
+    /// Apply a token-based Phosphor icon size.
+    /// Use on any  Ph.<name>.<weight>  icon view.
+    ///
+    ///   Ph.house.regular.iconSize(.md)
+    ///   Ph.heart.fill.iconSize(.lg).iconColor(.appError)
+    func iconSize(_ size: PhosphorIconSize) -> some View {
+        self.frame(width: size.rawValue, height: size.rawValue)
     }
 
-    /// Raw-pixel initialiser — use sparingly; prefer token sizes.
-    public init(
-        _ iconName: Ph.IconName,
-        weight:    Ph.IconWeight = .regular,
-        rawSize:   CGFloat,
-        color:     Color = .primary,
-        label:     String? = nil
-    ) {
-        self.iconName = iconName
-        self.weight   = weight
-        self.size     = rawSize
-        self.color    = color
-        self.label    = label
+    /// Apply a token-based Phosphor icon size using raw pt value.
+    /// Prefer the  `iconSize(_:PhosphorIconSize)`  overload when possible.
+    func iconSize(_ pt: CGFloat) -> some View {
+        self.frame(width: pt, height: pt)
     }
 
-    // ── Body ───────────────────────────────────────────────────────────────
+    /// Apply a color to a Phosphor icon.
+    /// Equivalent to `.color()` but discoverable alongside `.iconSize()`.
+    ///
+    ///   Ph.warning.fill.iconSize(.sm).iconColor(.appError)
+    func iconColor(_ color: Color) -> some View {
+        self.color(color)
+    }
 
-    public var body: some View {
-        Ph.icon(iconName, weight: weight)
-            .color(color)
-            .frame(width: size, height: size)
+    /// Make a Phosphor icon accessible.
+    /// - Parameter label: VoiceOver label. Passing `nil` marks the icon as decorative.
+    func iconAccessibility(label: String?) -> some View {
+        self
             .accessibilityLabel(label ?? "")
             .accessibilityHidden(label == nil)
-    }
-}
-
-// MARK: - Convenience Modifiers
-
-public extension PhosphorIcon {
-
-    /// Change weight while keeping other properties.
-    func weight(_ weight: Ph.IconWeight) -> PhosphorIcon {
-        PhosphorIcon(iconName, weight: weight, rawSize: size, color: color, label: label)
-    }
-
-    /// Change color while keeping other properties.
-    func iconColor(_ color: Color) -> PhosphorIcon {
-        PhosphorIcon(iconName, weight: weight, rawSize: size, color: color, label: label)
     }
 }
 
 // MARK: - Preview
 
 #if DEBUG
-#Preview("PhosphorIcon sizes & weights") {
-    VStack(spacing: CGFloat.space4) {
+#Preview("Phosphor icon tokens") {
+    ScrollView {
+        VStack(alignment: .leading, spacing: CGFloat.space6) {
 
-        Text("Size tokens").font(.appTitleSmall)
+            // ── Size tokens ───────────────────────────────────────────────
+            Text("Size tokens").font(.appTitleSmall)
 
-        HStack(spacing: CGFloat.space4) {
-            PhosphorIcon(.house, size: .xs)
-            PhosphorIcon(.house, size: .sm)
-            PhosphorIcon(.house, size: .md)
-            PhosphorIcon(.house, size: .lg)
-            PhosphorIcon(.house, size: .xl)
+            HStack(spacing: CGFloat.space4) {
+                VStack(spacing: CGFloat.space2) {
+                    Ph.house.regular.iconSize(.xs)
+                    Text("xs").font(.appCaptionSmall)
+                }
+                VStack(spacing: CGFloat.space2) {
+                    Ph.house.regular.iconSize(.sm)
+                    Text("sm").font(.appCaptionSmall)
+                }
+                VStack(spacing: CGFloat.space2) {
+                    Ph.house.regular.iconSize(.md)
+                    Text("md").font(.appCaptionSmall)
+                }
+                VStack(spacing: CGFloat.space2) {
+                    Ph.house.regular.iconSize(.lg)
+                    Text("lg").font(.appCaptionSmall)
+                }
+                VStack(spacing: CGFloat.space2) {
+                    Ph.house.regular.iconSize(.xl)
+                    Text("xl").font(.appCaptionSmall)
+                }
+            }
+
+            Divider()
+
+            // ── Weight variants ───────────────────────────────────────────
+            Text("Weight variants").font(.appTitleSmall)
+
+            HStack(spacing: CGFloat.space4) {
+                VStack(spacing: CGFloat.space2) {
+                    Ph.heart.thin.iconSize(.lg)
+                    Text("thin").font(.appCaptionSmall)
+                }
+                VStack(spacing: CGFloat.space2) {
+                    Ph.heart.light.iconSize(.lg)
+                    Text("light").font(.appCaptionSmall)
+                }
+                VStack(spacing: CGFloat.space2) {
+                    Ph.heart.regular.iconSize(.lg)
+                    Text("regular").font(.appCaptionSmall)
+                }
+                VStack(spacing: CGFloat.space2) {
+                    Ph.heart.bold.iconSize(.lg)
+                    Text("bold").font(.appCaptionSmall)
+                }
+                VStack(spacing: CGFloat.space2) {
+                    Ph.heart.fill.iconSize(.lg)
+                    Text("fill").font(.appCaptionSmall)
+                }
+                VStack(spacing: CGFloat.space2) {
+                    Ph.heart.duotone.iconSize(.lg)
+                    Text("duotone").font(.appCaptionSmall)
+                }
+            }
+
+            Divider()
+
+            // ── Color tokens ──────────────────────────────────────────────
+            Text("Color tokens").font(.appTitleSmall)
+
+            HStack(spacing: CGFloat.space4) {
+                Ph.warning.fill.iconSize(.lg).iconColor(.appTextError)
+                Ph.checkCircle.fill.iconSize(.lg).iconColor(.appTextSuccess)
+                Ph.info.fill.iconSize(.lg).iconColor(.appTextAccent)
+            }
+
+            Divider()
+
+            // ── Accessibility ─────────────────────────────────────────────
+            Text("Accessible icon").font(.appTitleSmall)
+            Ph.bell.regular.iconSize(.lg).iconAccessibility(label: "Notifications")
         }
-
-        Divider()
-
-        Text("Weight variants").font(.appTitleSmall)
-
-        HStack(spacing: CGFloat.space4) {
-            PhosphorIcon(.heart, weight: .thin,     size: .lg)
-            PhosphorIcon(.heart, weight: .light,    size: .lg)
-            PhosphorIcon(.heart, weight: .regular,  size: .lg)
-            PhosphorIcon(.heart, weight: .bold,     size: .lg)
-            PhosphorIcon(.heart, weight: .fill,     size: .lg)
-            PhosphorIcon(.heart, weight: .duotone,  size: .lg)
-        }
-
-        Divider()
-
-        Text("Color tokens").font(.appTitleSmall)
-
-        HStack(spacing: CGFloat.space4) {
-            PhosphorIcon(.warning, weight: .fill, size: .lg, color: .appError)
-            PhosphorIcon(.checkCircle, weight: .fill, size: .lg, color: .appSuccess)
-            PhosphorIcon(.info, weight: .fill, size: .lg, color: .appPrimary)
-        }
-
-        Divider()
-
-        Text("Accessible icon").font(.appTitleSmall)
-        PhosphorIcon(.bell, size: .lg, label: "Notifications")
+        .padding(CGFloat.space6)
     }
-    .padding(CGFloat.space6)
 }
 #endif

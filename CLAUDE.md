@@ -68,12 +68,16 @@ Token categories in `DesignTokens.swift`:
 ## Icon System (Phosphor Icons)
 
 **Package:** PhosphorSwift via SPM — `https://github.com/phosphor-icons/swift` (upToNextMajorVersion: 2.0.0)
-**Helper:** `PhosphorIconHelper.swift` — `PhosphorIcon` view wrapper + `PhosphorIconSize` enum
+**Helper:** `PhosphorIconHelper.swift` — `View` extension helpers + `PhosphorIconSize` enum
 **Same icon set used in Figma, web, and iOS.**
+
+### How the Swift API works
+
+Icons are accessed as `Ph.<name>.<weight>` — each returns a SwiftUI `View` (a resizable `Image`). Chain `.iconSize()`, `.iconColor()`, and `.iconAccessibility(label:)` from `PhosphorIconHelper.swift` to apply design tokens.
 
 ### Rules
 
-- **Always** use `PhosphorIcon(...)` — not raw `Ph.*` API (except for advanced cases)
+- Use `Ph.<name>.<weight>.iconSize(.<token>)` for all icon usage
 - Default weight: `.regular` · Default size: `.md` (20pt)
 - Use `Color.appIcon*` tokens for color, not hardcoded hex/rgb
 
@@ -82,16 +86,22 @@ Token categories in `DesignTokens.swift`:
 ```swift
 import PhosphorSwift
 
-// Basic (weight=.regular, size=.md, color=.primary)
-PhosphorIcon(.house)
+// Basic — regular weight, md size (20pt), inherits foreground color
+Ph.house.regular.iconSize(.md)
 
-// With tokens
-PhosphorIcon(.heart, weight: .fill, size: .lg, color: .appError)
+// With size and color tokens
+Ph.heart.fill.iconSize(.lg).iconColor(.appTextError)
 
-// Accessible (adds accessibilityLabel, unhides from VoiceOver)
-PhosphorIcon(.bell, label: "Notifications")
+// Bold weight, small size
+Ph.arrowRight.bold.iconSize(.sm)
 
-// Advanced (raw API — for special cases only)
+// Accessible (adds VoiceOver label; decorative when nil)
+Ph.bell.regular.iconSize(.md).iconAccessibility(label: "Notifications")
+
+// Raw pt size (use sparingly)
+Ph.star.regular.iconSize(18)
+
+// Raw Phosphor API (advanced — when token helpers don't fit)
 Ph.house.regular.color(.appIconPrimary).frame(width: 24, height: 24)
 ```
 
@@ -107,7 +117,7 @@ Ph.house.regular.color(.appIconPrimary).frame(width: 24, height: 24)
 
 ### Figma → Code
 
-Icon name in Figma sidebar (e.g. `House`) = `Ph.IconName` enum value (`.house`, `.arrowRight`). Weight layer = `.regular` / `.fill` / `.bold` etc.
+Icon name in Figma sidebar (e.g. `House`) → `Ph.house` (camelCase). Weight layer → `.regular` / `.fill` / `.bold` / `.thin` / `.light` / `.duotone`.
 
 ---
 
