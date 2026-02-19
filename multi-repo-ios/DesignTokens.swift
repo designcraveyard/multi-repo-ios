@@ -190,13 +190,101 @@ extension CGFloat {
     static let space2XL: CGFloat = 48
 }
 
-// MARK: - Typography Tokens
+// MARK: - Radius Tokens  (Figma Simantic-Dimensions › Mobile values)
+// iOS has no breakpoints — always uses the Mobile tier.
+// For pill/capsule shapes use .clipShape(Capsule()) instead of radiusFull.
+
+extension CGFloat {
+    static let radiusNone: CGFloat = 0
+    static let radiusXS:   CGFloat = 4
+    static let radiusSM:   CGFloat = 8
+    static let radiusMD:   CGFloat = 12
+    static let radiusLG:   CGFloat = 16
+    static let radiusXL:   CGFloat = 24
+    static let radius2XL:  CGFloat = 32
+}
+
+// MARK: - Numeric Spacing Scale  (Figma Primitives/Dimensions 4px grid)
+// Use these in new code: .padding(CGFloat.space4), VStack(spacing: .space3)
+// Legacy aliases (spaceXS … space2XL) remain below.
+
+extension CGFloat {
+    static let space1:  CGFloat = 4
+    static let space2:  CGFloat = 8
+    static let space3:  CGFloat = 12
+    static let space4:  CGFloat = 16   // == spaceMD
+    static let space5:  CGFloat = 20
+    static let space6:  CGFloat = 24   // == spaceLG
+    static let space8:  CGFloat = 32   // == spaceXL
+    static let space10: CGFloat = 40
+    static let space12: CGFloat = 48   // == space2XL
+    static let space16: CGFloat = 64
+    static let space20: CGFloat = 80
+    static let space24: CGFloat = 96
+}
+
+// MARK: - Typography Tokens  (Figma "🎨 Tokens & Styles" page, node 18:577)
+// Font family: Inter (Figma) → system default on iOS (closest match).
+// Overline tokens require a .tracking() modifier for letter-spacing:
+//   .font(.appOverlineSmall).tracking(1)   // 1pt tracking
+//   .font(.appOverlineLarge).tracking(2)   // 2pt tracking
 
 extension Font {
-    /// Large display / page heading — 28pt semibold
-    static let appTitle:   Font = .system(size: 28, weight: .semibold)
-    /// Standard body copy — 16pt regular
-    static let appBody:    Font = .system(size: 16, weight: .regular)
-    /// Small caption / label — 12pt regular
-    static let appCaption: Font = .system(size: 12, weight: .regular)
+
+    // ── Display ──────────────────────────────────────────────────────────────
+    static let appDisplayLarge:  Font = .system(size: 96, weight: .regular)
+    static let appDisplayMedium: Font = .system(size: 80, weight: .regular)
+    static let appDisplaySmall:  Font = .system(size: 64, weight: .regular)
+
+    // ── Heading ───────────────────────────────────────────────────────────────
+    static let appHeadingLarge:  Font = .system(size: 56, weight: .bold)
+    static let appHeadingMedium: Font = .system(size: 48, weight: .bold)
+    static let appHeadingSmall:  Font = .system(size: 40, weight: .bold)
+
+    // ── Title ─────────────────────────────────────────────────────────────────
+    static let appTitleLarge:    Font = .system(size: 28, weight: .bold)
+    static let appTitleMedium:   Font = .system(size: 24, weight: .bold)
+    static let appTitleSmall:    Font = .system(size: 20, weight: .bold)
+
+    // ── Body ──────────────────────────────────────────────────────────────────
+    static let appBodyLarge:     Font = .system(size: 16, weight: .regular)
+    static let appBodyMedium:    Font = .system(size: 14, weight: .regular)
+    static let appBodySmall:     Font = .system(size: 12, weight: .regular)
+
+    // ── Body Emphasized ───────────────────────────────────────────────────────
+    static let appBodyLargeEm:   Font = .system(size: 16, weight: .medium)
+    static let appBodyMediumEm:  Font = .system(size: 14, weight: .medium)
+    static let appBodySmallEm:   Font = .system(size: 12, weight: .medium)
+
+    // ── CTA (call-to-action / buttons) ────────────────────────────────────────
+    static let appCTALarge:      Font = .system(size: 16, weight: .semibold)
+    static let appCTAMedium:     Font = .system(size: 14, weight: .semibold)
+    static let appCTASmall:      Font = .system(size: 12, weight: .semibold)
+
+    // ── Link ──────────────────────────────────────────────────────────────────
+    static let appLinkLarge:     Font = .system(size: 16, weight: .medium)
+    static let appLinkMedium:    Font = .system(size: 14, weight: .medium)
+    static let appLinkSmall:     Font = .system(size: 12, weight: .medium)
+
+    // ── Caption ───────────────────────────────────────────────────────────────
+    static let appCaptionMedium: Font = .system(size: 12, weight: .regular)
+    static let appCaptionSmall:  Font = .system(size: 10, weight: .regular)
+
+    // ── Badge ─────────────────────────────────────────────────────────────────
+    static let appBadgeMedium:   Font = .system(size: 10, weight: .semibold)
+    static let appBadgeSmall:    Font = .system(size:  8, weight: .semibold)
+
+    // ── Overline ──────────────────────────────────────────────────────────────
+    // Pair with .tracking(1) or .tracking(2) for Figma letter-spacing.
+    static let appOverlineSmall:  Font = .system(size:  8, weight: .bold)
+    static let appOverlineMedium: Font = .system(size: 10, weight: .bold)
+    static let appOverlineLarge:  Font = .system(size: 12, weight: .bold)
+
+    // ── Legacy aliases — keeps existing call-sites compiling ──────────────────
+    /// Alias → appTitleLarge (28pt bold)
+    static var appTitle:   Font { appTitleLarge }
+    /// Alias → appBodyLarge (16pt regular)
+    static var appBody:    Font { appBodyLarge }
+    /// Alias → appCaptionMedium (12pt regular)
+    static var appCaption: Font { appCaptionMedium }
 }
