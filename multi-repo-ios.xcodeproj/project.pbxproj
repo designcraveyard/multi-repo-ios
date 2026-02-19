@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		9155AEE62F47747700807F2F /* PhosphorSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 9155AEE52F47747700807F2F /* PhosphorSwift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		9155AEC32F46CC8F00807F2F /* multi-repo-ios.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "multi-repo-ios.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9155AEE62F47747700807F2F /* PhosphorSwift in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -33,6 +38,7 @@
 			isa = PBXGroup;
 			children = (
 				9155AEC52F46CC8F00807F2F /* multi-repo-ios */,
+				9155AEE42F47747700807F2F /* Frameworks */,
 				9155AEC42F46CC8F00807F2F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -43,6 +49,13 @@
 				9155AEC32F46CC8F00807F2F /* multi-repo-ios.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		9155AEE42F47747700807F2F /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -65,6 +78,7 @@
 			);
 			name = "multi-repo-ios";
 			packageProductDependencies = (
+				9155AEE52F47747700807F2F /* PhosphorSwift */,
 			);
 			productName = "multi-repo-ios";
 			productReference = 9155AEC32F46CC8F00807F2F /* multi-repo-ios.app */;
@@ -346,6 +360,14 @@
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		9155AEE52F47747700807F2F /* PhosphorSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9155AEE32F4773F100807F2F /* XCRemoteSwiftPackageReference "swift" */;
+			productName = PhosphorSwift;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 9155AEBB2F46CC8F00807F2F /* Project object */;
 }
