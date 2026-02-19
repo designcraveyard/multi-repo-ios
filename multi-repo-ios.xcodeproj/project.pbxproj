@@ -94,6 +94,9 @@
 			);
 			mainGroup = 9155AEBA2F46CC8F00807F2F;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				9155AEE32F4773F100807F2F /* XCRemoteSwiftPackageReference "swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 9155AEC42F46CC8F00807F2F /* Products */;
 			projectDirPath = "";
@@ -332,6 +335,17 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		9155AEE32F4773F100807F2F /* XCRemoteSwiftPackageReference "swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/phosphor-icons/swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.1.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
 	};
 	rootObject = 9155AEBB2F46CC8F00807F2F /* Project object */;
 }
