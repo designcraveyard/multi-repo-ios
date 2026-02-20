@@ -18,6 +18,20 @@ private struct ShowcaseSection<Content: View>: View {
     }
 }
 
+// MARK: - Horizontal Scroll Row
+// Wraps any HStack content in a horizontal scroll view so it never clips.
+
+private struct HScrollRow<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 0) {
+                content()
+            }
+        }
+    }
+}
+
 // MARK: - Component Showcase
 
 struct ContentView: View {
@@ -64,11 +78,13 @@ struct ContentView: View {
 
                     // ── Button: Sizes ─────────────────────────────────────
                     ShowcaseSection(title: "Button — Sizes") {
-                        HStack(spacing: 10) {
-                            AppButton(label: "Large",  variant: .primary, size: .lg) {}
-                            AppButton(label: "Medium", variant: .primary, size: .md) {}
-                            AppButton(label: "Small",  variant: .primary, size: .sm) {}
-                            Spacer()
+                        HScrollRow {
+                            HStack(spacing: 10) {
+                                AppButton(label: "Large",  variant: .primary, size: .lg) {}
+                                AppButton(label: "Medium", variant: .primary, size: .md) {}
+                                AppButton(label: "Small",  variant: .primary, size: .sm) {}
+                            }
+                            .padding(.trailing, .space4)
                         }
                     }
 
@@ -120,161 +136,183 @@ struct ContentView: View {
 
                     // ── IconButton: Variants ──────────────────────────────
                     ShowcaseSection(title: "IconButton — Variants") {
-                        HStack(spacing: .space3) {
-                            AppIconButton(icon: AnyView(Ph.heart.regular),     label: "Like",    variant: .primary)     {}
-                            AppIconButton(icon: AnyView(Ph.bookmark.regular),  label: "Save",    variant: .secondary)   {}
-                            AppIconButton(icon: AnyView(Ph.share.regular),     label: "Share",   variant: .tertiary)    {}
-                            AppIconButton(icon: AnyView(Ph.dotsThree.regular), label: "More",    variant: .quarternary) {}
-                            AppIconButton(icon: AnyView(Ph.check.regular),     label: "Confirm", variant: .success)     {}
-                            AppIconButton(icon: AnyView(Ph.trash.regular),     label: "Delete",  variant: .danger)      {}
-                            Spacer()
+                        HScrollRow {
+                            HStack(spacing: .space3) {
+                                AppIconButton(icon: AnyView(Ph.heart.regular),     label: "Like",    variant: .primary)     {}
+                                AppIconButton(icon: AnyView(Ph.bookmark.regular),  label: "Save",    variant: .secondary)   {}
+                                AppIconButton(icon: AnyView(Ph.share.regular),     label: "Share",   variant: .tertiary)    {}
+                                AppIconButton(icon: AnyView(Ph.dotsThree.regular), label: "More",    variant: .quarternary) {}
+                                AppIconButton(icon: AnyView(Ph.check.regular),     label: "Confirm", variant: .success)     {}
+                                AppIconButton(icon: AnyView(Ph.trash.regular),     label: "Delete",  variant: .danger)      {}
+                            }
+                            .padding(.trailing, .space4)
                         }
                     }
 
                     // ── IconButton: Sizes ──────────────────────────────────
                     ShowcaseSection(title: "IconButton — Sizes") {
-                        HStack(spacing: .space3) {
-                            AppIconButton(icon: AnyView(Ph.star.regular), label: "Favourite", variant: .primary, size: .lg) {}
-                            AppIconButton(icon: AnyView(Ph.star.regular), label: "Favourite", variant: .primary, size: .md) {}
-                            AppIconButton(icon: AnyView(Ph.star.regular), label: "Favourite", variant: .primary, size: .sm) {}
-                            Spacer()
+                        HScrollRow {
+                            HStack(spacing: .space3) {
+                                AppIconButton(icon: AnyView(Ph.star.regular), label: "Favourite", variant: .primary, size: .lg) {}
+                                AppIconButton(icon: AnyView(Ph.star.regular), label: "Favourite", variant: .primary, size: .md) {}
+                                AppIconButton(icon: AnyView(Ph.star.regular), label: "Favourite", variant: .primary, size: .sm) {}
+                            }
+                            .padding(.trailing, .space4)
                         }
                     }
 
                     // ── IconButton: States ─────────────────────────────────
                     ShowcaseSection(title: "IconButton — States") {
-                        HStack(spacing: .space3) {
-                            AppIconButton(icon: AnyView(Ph.heart.regular), label: "Loading",  variant: .primary,  isLoading: true)  {}
-                            AppIconButton(icon: AnyView(Ph.heart.regular), label: "Disabled", variant: .primary,  isDisabled: true) {}
-                            AppIconButton(icon: AnyView(Ph.trash.regular), label: "Disabled", variant: .danger,   isDisabled: true) {}
-                            AppIconButton(icon: AnyView(Ph.share.regular), label: "Disabled", variant: .tertiary, isDisabled: true) {}
-                            Spacer()
+                        HScrollRow {
+                            HStack(spacing: .space3) {
+                                AppIconButton(icon: AnyView(Ph.heart.regular), label: "Loading",  variant: .primary,  isLoading: true)  {}
+                                AppIconButton(icon: AnyView(Ph.heart.regular), label: "Disabled", variant: .primary,  isDisabled: true) {}
+                                AppIconButton(icon: AnyView(Ph.trash.regular), label: "Disabled", variant: .danger,   isDisabled: true) {}
+                                AppIconButton(icon: AnyView(Ph.share.regular), label: "Disabled", variant: .tertiary, isDisabled: true) {}
+                            }
+                            .padding(.trailing, .space4)
                         }
                     }
 
                     // ── Icons: Sizes ──────────────────────────────────────
                     ShowcaseSection(title: "Icons — Sizes") {
-                        HStack(spacing: 20) {
-                            ForEach([
-                                ("xs", PhosphorIconSize.xs),
-                                ("sm", PhosphorIconSize.sm),
-                                ("md", PhosphorIconSize.md),
-                                ("lg", PhosphorIconSize.lg),
-                                ("xl", PhosphorIconSize.xl),
-                            ], id: \.0) { label, token in
-                                VStack(spacing: 4) {
-                                    Ph.house.regular
-                                        .iconSize(token)
-                                        .iconColor(.appIconPrimary)
-                                    Text(label)
-                                        .font(.system(size: 10))
-                                        .foregroundStyle(Color.typographyMuted)
+                        HScrollRow {
+                            HStack(spacing: 20) {
+                                ForEach([
+                                    ("xs", PhosphorIconSize.xs),
+                                    ("sm", PhosphorIconSize.sm),
+                                    ("md", PhosphorIconSize.md),
+                                    ("lg", PhosphorIconSize.lg),
+                                    ("xl", PhosphorIconSize.xl),
+                                ], id: \.0) { label, token in
+                                    VStack(spacing: 4) {
+                                        Ph.house.regular
+                                            .iconSize(token)
+                                            .iconColor(.appIconPrimary)
+                                        Text(label)
+                                            .font(.system(size: 10))
+                                            .foregroundStyle(Color.typographyMuted)
+                                    }
                                 }
                             }
-                            Spacer()
+                            .padding(.trailing, .space4)
                         }
                     }
 
                     // ── Icons: Weights ────────────────────────────────────
                     ShowcaseSection(title: "Icons — Weights") {
-                        HStack(spacing: 16) {
-                            ForEach([
-                                ("thin",    AnyView(Ph.heart.thin.iconSize(.lg))),
-                                ("light",   AnyView(Ph.heart.light.iconSize(.lg))),
-                                ("regular", AnyView(Ph.heart.regular.iconSize(.lg))),
-                                ("bold",    AnyView(Ph.heart.bold.iconSize(.lg))),
-                                ("fill",    AnyView(Ph.heart.fill.iconSize(.lg))),
-                                ("duotone", AnyView(Ph.heart.duotone.iconSize(.lg))),
-                            ], id: \.0) { label, icon in
-                                VStack(spacing: 4) {
-                                    icon.iconColor(.appIconPrimary)
-                                    Text(label)
-                                        .font(.system(size: 9))
-                                        .foregroundStyle(Color.typographyMuted)
+                        HScrollRow {
+                            HStack(spacing: 16) {
+                                ForEach([
+                                    ("thin",    AnyView(Ph.heart.thin.iconSize(.lg))),
+                                    ("light",   AnyView(Ph.heart.light.iconSize(.lg))),
+                                    ("regular", AnyView(Ph.heart.regular.iconSize(.lg))),
+                                    ("bold",    AnyView(Ph.heart.bold.iconSize(.lg))),
+                                    ("fill",    AnyView(Ph.heart.fill.iconSize(.lg))),
+                                    ("duotone", AnyView(Ph.heart.duotone.iconSize(.lg))),
+                                ], id: \.0) { label, icon in
+                                    VStack(spacing: 4) {
+                                        icon.iconColor(.appIconPrimary)
+                                        Text(label)
+                                            .font(.system(size: 9))
+                                            .foregroundStyle(Color.typographyMuted)
+                                    }
                                 }
                             }
-                            Spacer()
+                            .padding(.trailing, .space4)
                         }
                     }
 
                     // ── Badge ─────────────────────────────────────────────
                     ShowcaseSection(title: "Badge — Solid") {
-                        HStack(spacing: .space2) {
-                            AppBadge(label: "Brand",   type: .brand)
-                            AppBadge(label: "Success", type: .success)
-                            AppBadge(label: "Error",   type: .error)
-                            AppBadge(label: "Accent",  type: .accent)
-                            Spacer()
+                        HScrollRow {
+                            HStack(spacing: .space2) {
+                                AppBadge(label: "Brand",   type: .brand)
+                                AppBadge(label: "Success", type: .success)
+                                AppBadge(label: "Error",   type: .error)
+                                AppBadge(label: "Accent",  type: .accent)
+                            }
+                            .padding(.trailing, .space4)
                         }
                     }
 
                     ShowcaseSection(title: "Badge — Subtle") {
-                        HStack(spacing: .space2) {
-                            AppBadge(label: "Brand",   type: .brand,   subtle: true)
-                            AppBadge(label: "Success", type: .success, subtle: true)
-                            AppBadge(label: "Error",   type: .error,   subtle: true)
-                            AppBadge(label: "Accent",  type: .accent,  subtle: true)
-                            Spacer()
+                        HScrollRow {
+                            HStack(spacing: .space2) {
+                                AppBadge(label: "Brand",   type: .brand,   subtle: true)
+                                AppBadge(label: "Success", type: .success, subtle: true)
+                                AppBadge(label: "Error",   type: .error,   subtle: true)
+                                AppBadge(label: "Accent",  type: .accent,  subtle: true)
+                            }
+                            .padding(.trailing, .space4)
                         }
                     }
 
                     ShowcaseSection(title: "Badge — Number / Tiny") {
-                        HStack(spacing: .space2) {
-                            AppBadge(count: 3,  type: .brand)
-                            AppBadge(count: 12, type: .error)
-                            AppBadge(count: 99, type: .success)
-                            AppBadge(size: .tiny, type: .brand)
-                            AppBadge(size: .tiny, type: .error)
-                            AppBadge(size: .tiny, type: .success)
-                            Spacer()
+                        HScrollRow {
+                            HStack(spacing: .space2) {
+                                AppBadge(count: 3,  type: .brand)
+                                AppBadge(count: 12, type: .error)
+                                AppBadge(count: 99, type: .success)
+                                AppBadge(size: .tiny, type: .brand)
+                                AppBadge(size: .tiny, type: .error)
+                                AppBadge(size: .tiny, type: .success)
+                            }
+                            .padding(.trailing, .space4)
                         }
                     }
 
                     // ── Chip ──────────────────────────────────────────────
                     ShowcaseSection(title: "Chip — ChipTabs (single-select)") {
-                        HStack(spacing: .space2) {
-                            ForEach(["Design", "Code", "Product"], id: \.self) { label in
-                                AppChip(
-                                    label: label,
-                                    variant: .chipTabs,
-                                    isActive: activeChip == label.lowercased()
-                                ) {
-                                    withAnimation(.easeOut(duration: 0.15)) {
-                                        activeChip = label.lowercased()
-                                    }
-                                }
-                            }
-                            Spacer()
-                        }
-                    }
-
-                    ShowcaseSection(title: "Chip — Filters (multi-select)") {
-                        HStack(spacing: .space2) {
-                            ForEach(["Bold", "Italic", "Underline"], id: \.self) { label in
-                                AppChip(
-                                    label: label,
-                                    variant: .filters,
-                                    isActive: activeFilters.contains(label.lowercased())
-                                ) {
-                                    withAnimation(.easeOut(duration: 0.15)) {
-                                        let key = label.lowercased()
-                                        if activeFilters.contains(key) {
-                                            activeFilters.remove(key)
-                                        } else {
-                                            activeFilters.insert(key)
+                        HScrollRow {
+                            HStack(spacing: .space2) {
+                                ForEach(["Design", "Code", "Product"], id: \.self) { label in
+                                    AppChip(
+                                        label: label,
+                                        variant: .chipTabs,
+                                        isActive: activeChip == label.lowercased()
+                                    ) {
+                                        withAnimation(.easeOut(duration: 0.15)) {
+                                            activeChip = label.lowercased()
                                         }
                                     }
                                 }
                             }
-                            Spacer()
+                            .padding(.trailing, .space4)
+                        }
+                    }
+
+                    ShowcaseSection(title: "Chip — Filters (multi-select)") {
+                        HScrollRow {
+                            HStack(spacing: .space2) {
+                                ForEach(["Bold", "Italic", "Underline"], id: \.self) { label in
+                                    AppChip(
+                                        label: label,
+                                        variant: .filters,
+                                        isActive: activeFilters.contains(label.lowercased())
+                                    ) {
+                                        withAnimation(.easeOut(duration: 0.15)) {
+                                            let key = label.lowercased()
+                                            if activeFilters.contains(key) {
+                                                activeFilters.remove(key)
+                                            } else {
+                                                activeFilters.insert(key)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            .padding(.trailing, .space4)
                         }
                     }
 
                     ShowcaseSection(title: "Chip — Disabled") {
-                        HStack(spacing: .space2) {
-                            AppChip(label: "Active + disabled", variant: .chipTabs, isActive: true, isDisabled: true) {}
-                            AppChip(label: "Inactive + disabled", variant: .filters, isDisabled: true) {}
-                            Spacer()
+                        HScrollRow {
+                            HStack(spacing: .space2) {
+                                AppChip(label: "Active + disabled", variant: .chipTabs, isActive: true, isDisabled: true) {}
+                                AppChip(label: "Inactive + disabled", variant: .filters, isDisabled: true) {}
+                            }
+                            .padding(.trailing, .space4)
                         }
                     }
 
@@ -349,26 +387,32 @@ struct ContentView: View {
                     }
 
                     ShowcaseSection(title: "SegmentControlBar — Chips") {
-                        AppSegmentControlBar(
-                            items: [
-                                AppSegmentItem(id: "all",    label: "All"),
-                                AppSegmentItem(id: "design", label: "Design"),
-                                AppSegmentItem(id: "code",   label: "Code"),
-                            ],
-                            selected: $chipSelected,
-                            type: .chips
-                        )
+                        HScrollRow {
+                            AppSegmentControlBar(
+                                items: [
+                                    AppSegmentItem(id: "all",    label: "All"),
+                                    AppSegmentItem(id: "design", label: "Design"),
+                                    AppSegmentItem(id: "code",   label: "Code"),
+                                ],
+                                selected: $chipSelected,
+                                type: .chips
+                            )
+                            Spacer(minLength: .space4)
+                        }
                     }
 
                     ShowcaseSection(title: "SegmentControlBar — Filters (multi)") {
-                        AppSegmentControlBarMulti(
-                            items: [
-                                AppSegmentItem(id: "ios",     label: "iOS"),
-                                AppSegmentItem(id: "android", label: "Android"),
-                                AppSegmentItem(id: "web",     label: "Web"),
-                            ],
-                            selected: $filterSelected
-                        )
+                        HScrollRow {
+                            AppSegmentControlBarMulti(
+                                items: [
+                                    AppSegmentItem(id: "ios",     label: "iOS"),
+                                    AppSegmentItem(id: "android", label: "Android"),
+                                    AppSegmentItem(id: "web",     label: "Web"),
+                                ],
+                                selected: $filterSelected
+                            )
+                            Spacer(minLength: .space4)
+                        }
                     }
 
                     // ── Divider ───────────────────────────────────────────
@@ -408,19 +452,21 @@ struct ContentView: View {
                     }
 
                     ShowcaseSection(title: "Toast — Live trigger") {
-                        HStack(spacing: .space2) {
-                            ForEach([
-                                ("Default", AppToastVariant.default),
-                                ("Success", AppToastVariant.success),
-                                ("Error",   AppToastVariant.error),
-                            ], id: \.0) { label, variant in
-                                AppButton(label: label, variant: .secondary, size: .sm) {
-                                    toastVariant = variant
-                                    toastMessage = "\(label) notification"
-                                    withAnimation { showToast = true }
+                        HScrollRow {
+                            HStack(spacing: .space2) {
+                                ForEach([
+                                    ("Default", AppToastVariant.default),
+                                    ("Success", AppToastVariant.success),
+                                    ("Error",   AppToastVariant.error),
+                                ], id: \.0) { label, variant in
+                                    AppButton(label: label, variant: .secondary, size: .sm) {
+                                        toastVariant = variant
+                                        toastMessage = "\(label) notification"
+                                        withAnimation { showToast = true }
+                                    }
                                 }
                             }
-                            Spacer()
+                            .padding(.trailing, .space4)
                         }
                     }
 
@@ -441,49 +487,55 @@ struct ContentView: View {
 
                     // ── Thumbnail ─────────────────────────────────────────
                     ShowcaseSection(title: "Thumbnail — Square") {
-                        HStack(spacing: .space3) {
-                            ForEach([
-                                ("xs",  AppThumbnailSize.xs),
-                                ("sm",  AppThumbnailSize.sm),
-                                ("md",  AppThumbnailSize.md),
-                                ("lg",  AppThumbnailSize.lg),
-                                ("xl",  AppThumbnailSize.xl),
-                                ("xxl", AppThumbnailSize.xxl),
-                            ], id: \.0) { label, size in
-                                VStack(spacing: 4) {
-                                    AppThumbnail(size: size)
-                                    Text(label).font(.system(size: 9)).foregroundStyle(Color.typographyMuted)
+                        HScrollRow {
+                            HStack(spacing: .space3) {
+                                ForEach([
+                                    ("xs",  AppThumbnailSize.xs),
+                                    ("sm",  AppThumbnailSize.sm),
+                                    ("md",  AppThumbnailSize.md),
+                                    ("lg",  AppThumbnailSize.lg),
+                                    ("xl",  AppThumbnailSize.xl),
+                                    ("xxl", AppThumbnailSize.xxl),
+                                ], id: \.0) { label, size in
+                                    VStack(spacing: 4) {
+                                        AppThumbnail(size: size)
+                                        Text(label).font(.system(size: 9)).foregroundStyle(Color.typographyMuted)
+                                    }
                                 }
                             }
-                            Spacer()
+                            .padding(.trailing, .space4)
                         }
                     }
 
                     ShowcaseSection(title: "Thumbnail — Circular") {
-                        HStack(spacing: .space3) {
-                            ForEach([
-                                ("xs",  AppThumbnailSize.xs),
-                                ("sm",  AppThumbnailSize.sm),
-                                ("md",  AppThumbnailSize.md),
-                                ("lg",  AppThumbnailSize.lg),
-                                ("xl",  AppThumbnailSize.xl),
-                                ("xxl", AppThumbnailSize.xxl),
-                            ], id: \.0) { label, size in
-                                VStack(spacing: 4) {
-                                    AppThumbnail(size: size, rounded: true)
-                                    Text(label).font(.system(size: 9)).foregroundStyle(Color.typographyMuted)
+                        HScrollRow {
+                            HStack(spacing: .space3) {
+                                ForEach([
+                                    ("xs",  AppThumbnailSize.xs),
+                                    ("sm",  AppThumbnailSize.sm),
+                                    ("md",  AppThumbnailSize.md),
+                                    ("lg",  AppThumbnailSize.lg),
+                                    ("xl",  AppThumbnailSize.xl),
+                                    ("xxl", AppThumbnailSize.xxl),
+                                ], id: \.0) { label, size in
+                                    VStack(spacing: 4) {
+                                        AppThumbnail(size: size, rounded: true)
+                                        Text(label).font(.system(size: 9)).foregroundStyle(Color.typographyMuted)
+                                    }
                                 }
                             }
-                            Spacer()
+                            .padding(.trailing, .space4)
                         }
                     }
 
                     ShowcaseSection(title: "Thumbnail — Initials fallback") {
-                        HStack(spacing: .space3) {
-                            AppThumbnail(size: .lg,  rounded: true,  accessibilityLabel: "Alice Brown") { Text("AB") }
-                            AppThumbnail(size: .xl,  rounded: true,  accessibilityLabel: "John Doe")    { Text("JD") }
-                            AppThumbnail(size: .xxl, rounded: false, accessibilityLabel: "Maria Kim")   { Text("MK") }
-                            Spacer()
+                        HScrollRow {
+                            HStack(spacing: .space3) {
+                                AppThumbnail(size: .lg,  rounded: true,  accessibilityLabel: "Alice Brown") { Text("AB") }
+                                AppThumbnail(size: .xl,  rounded: true,  accessibilityLabel: "John Doe")    { Text("JD") }
+                                AppThumbnail(size: .xxl, rounded: false, accessibilityLabel: "Maria Kim")   { Text("MK") }
+                            }
+                            .padding(.trailing, .space4)
                         }
                     }
 

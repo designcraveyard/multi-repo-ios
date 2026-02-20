@@ -3,7 +3,7 @@
 //
 // Axes: Size(Small/Medium/Large) × Type(SegmentControl/Chips/Filters) = 9
 //
-// SegmentControl — pill container, animated sliding bg, single-select
+// SegmentControl — full-width pill container, equal segments, animated sliding thumb
 // Chips          — borderless pill chips, single-select
 // Filters        — bordered pill chips, multi-select
 //
@@ -17,7 +17,7 @@
 //
 // Usage (Filters / multi-select):
 //   @State private var filters: Set<String> = []
-//   AppSegmentControlBar(items: [...], selectedSet: $filters, type: .filters)
+//   AppSegmentControlBarMulti(items: [...], selected: $filters)
 
 import SwiftUI
 
@@ -34,7 +34,7 @@ public struct AppSegmentItem: Identifiable {
 }
 
 public enum AppSegmentBarType {
-    case segmentControl  // pill container, sliding thumb, single-select
+    case segmentControl  // full-width pill container, sliding thumb, single-select
     case chips           // borderless pill chips, single-select
     case filters         // bordered pill chips, multi-select
 }
@@ -90,31 +90,44 @@ public struct AppSegmentControlBar: View {
         let spec = size.spec
         let isSegment = type == .segmentControl
 
-        HStack(spacing: isSegment ? 0 : CGFloat.space2) {
-            ForEach(items) { item in
-                segmentButton(item: item, spec: spec)
+        if isSegment {
+            // SegmentControl: full-width, equal segments
+            HStack(spacing: 0) {
+                ForEach(items) { item in
+                    segmentControlButton(item: item, spec: spec)
+                }
+            }
+            // Figma: paddingLeft/Right=4, paddingTop/Bottom=2
+            .padding(.horizontal, 4)
+            .padding(.vertical, 2)
+            .background(Color.surfacesBaseLowContrastPressed)
+            .clipShape(Capsule())
+        } else {
+            // Chips/Filters: content-sized pills
+            HStack(spacing: CGFloat.space2) {
+                ForEach(items) { item in
+                    chipFilterButton(item: item, spec: spec)
+                }
             }
         }
-        .padding(isSegment ? CGFloat.space1 : 0)
-        .background(isSegment ? Color.surfacesBaseLowContrastPressed : Color.clear)
-        .clipShape(isSegment ? AnyShape(RoundedRectangle(cornerRadius: .radiusMD)) : AnyShape(Rectangle()))
     }
 
+    // MARK: - SegmentControl button (equal-width, full-stretch)
+
     @ViewBuilder
-    private func segmentButton(item: AppSegmentItem, spec: SegmentSizeSpec) -> some View {
+    private func segmentControlButton(item: AppSegmentItem, spec: SegmentSizeSpec) -> some View {
         let isActive = item.id == selected
-        let isSegment = type == .segmentControl
 
         Button {
-            withAnimation(.easeOut(duration: 0.2)) {
+            withAnimation(.easeInOut(duration: 0.2)) {
                 selected = item.id
             }
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
         } label: {
             ZStack {
-                // Sliding thumb (SegmentControl only)
-                if isSegment && isActive {
-                    RoundedRectangle(cornerRadius: .radiusSM)
+                // Sliding thumb
+                if isActive {
+                    Capsule()
                         .fill(Color.surfacesBasePrimary)
                         .shadow(color: Color.black.opacity(0.08), radius: 2, x: 0, y: 1)
                         .matchedGeometryEffect(id: "segmentThumb", in: thumbNamespace)
@@ -122,35 +135,47 @@ public struct AppSegmentControlBar: View {
 
                 Text(item.label)
                     .font(spec.font)
-                    .foregroundStyle(labelColor(isActive: isActive))
+                    .foregroundStyle(isActive ? Color.typographyPrimary : Color.typographySecondary)
                     .padding(.horizontal, spec.paddingH)
                     .padding(.vertical, spec.paddingV)
+                    .frame(maxWidth: .infinity)  // equal segments
             }
         }
         .buttonStyle(.plain)
-        // For chips/filters — apply pill background directly
-        .background(chipBackground(isActive: isActive))
-        .overlay(chipBorder(isActive: isActive))
-        .clipShape(type == .segmentControl ? AnyShape(Rectangle()) : AnyShape(Capsule()))
         .accessibilityAddTraits(isActive ? [.isSelected] : [])
     }
 
-    private func labelColor(isActive: Bool) -> Color {
-        switch type {
-        case .segmentControl:
-            return isActive ? .typographyPrimary : .typographySecondary
-        case .chips:
-            return isActive ? .typographyPrimary : .typographySecondary
-        case .filters:
-            return isActive ? .typographyPrimary : .typographySecondary
+    // MARK: - Chips / Filters button (content-sized)
+
+    @ViewBuilder
+    private func chipFilterButton(item: AppSegmentItem, spec: SegmentSizeSpec) -> some View {
+        let isActive = item.id == selected
+
+        Button {
+            withAnimation(.easeOut(duration: 0.15)) {
+                selected = item.id
+            }
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        } label: {
+            Text(item.label)
+                .font(spec.font)
+                .foregroundStyle(isActive ? Color.typographyPrimary : Color.typographySecondary)
+                .padding(.horizontal, spec.paddingH)
+                .padding(.vertical, spec.paddingV)
         }
+        .buttonStyle(.plain)
+        .background(chipBackground(isActive: isActive))
+        .overlay(chipBorder(isActive: isActive))
+        .clipShape(Capsule())
+        .animation(.easeOut(duration: 0.15), value: isActive)
+        .accessibilityAddTraits(isActive ? [.isSelected] : [])
     }
 
     @ViewBuilder
     private func chipBackground(isActive: Bool) -> some View {
         switch type {
         case .segmentControl:
-            Color.clear // handled by matchedGeometryEffect thumb above
+            Color.clear
         case .chips:
             Capsule().fill(isActive ? Color.surfacesBaseLowContrastPressed : Color.surfacesBaseLowContrast)
         case .filters:
@@ -209,14 +234,6 @@ public struct AppSegmentControlBarMulti: View {
             }
         }
     }
-}
-
-// MARK: - AnyShape helper
-
-private struct AnyShape: Shape {
-    private let _path: (CGRect) -> Path
-    init<S: Shape>(_ shape: S) { _path = { rect in shape.path(in: rect) } }
-    func path(in rect: CGRect) -> Path { _path(rect) }
 }
 
 // MARK: - Preview
