@@ -21,7 +21,30 @@ private struct ShowcaseSection<Content: View>: View {
 // MARK: - Component Showcase
 
 struct ContentView: View {
+    // Button
     @State private var isLoading = false
+
+    // Tabs
+    @State private var activeTab = "design"
+
+    // SegmentControlBar
+    @State private var segSelected = "week"
+    @State private var chipSelected = "all"
+    @State private var filterSelected: Set<String> = ["ios"]
+
+    // Chip
+    @State private var activeChip = "design"
+    @State private var activeFilters: Set<String> = ["bold"]
+
+    // Toast
+    @State private var showToast = false
+    @State private var toastVariant: AppToastVariant = .success
+    @State private var toastMessage = ""
+
+    // InputField
+    @State private var name = ""
+    @State private var email = "user@example"
+    @State private var bio = ""
 
     var body: some View {
         NavigationStack {
@@ -174,6 +197,296 @@ struct ContentView: View {
                         }
                     }
 
+                    // ── Badge ─────────────────────────────────────────────
+                    ShowcaseSection(title: "Badge — Solid") {
+                        HStack(spacing: .space2) {
+                            AppBadge(label: "Brand",   type: .brand)
+                            AppBadge(label: "Success", type: .success)
+                            AppBadge(label: "Error",   type: .error)
+                            AppBadge(label: "Accent",  type: .accent)
+                            Spacer()
+                        }
+                    }
+
+                    ShowcaseSection(title: "Badge — Subtle") {
+                        HStack(spacing: .space2) {
+                            AppBadge(label: "Brand",   type: .brand,   subtle: true)
+                            AppBadge(label: "Success", type: .success, subtle: true)
+                            AppBadge(label: "Error",   type: .error,   subtle: true)
+                            AppBadge(label: "Accent",  type: .accent,  subtle: true)
+                            Spacer()
+                        }
+                    }
+
+                    ShowcaseSection(title: "Badge — Number / Tiny") {
+                        HStack(spacing: .space2) {
+                            AppBadge(count: 3,  type: .brand)
+                            AppBadge(count: 12, type: .error)
+                            AppBadge(count: 99, type: .success)
+                            AppBadge(size: .tiny, type: .brand)
+                            AppBadge(size: .tiny, type: .error)
+                            AppBadge(size: .tiny, type: .success)
+                            Spacer()
+                        }
+                    }
+
+                    // ── Chip ──────────────────────────────────────────────
+                    ShowcaseSection(title: "Chip — ChipTabs (single-select)") {
+                        HStack(spacing: .space2) {
+                            ForEach(["Design", "Code", "Product"], id: \.self) { label in
+                                AppChip(
+                                    label: label,
+                                    variant: .chipTabs,
+                                    isActive: activeChip == label.lowercased()
+                                ) {
+                                    withAnimation(.easeOut(duration: 0.15)) {
+                                        activeChip = label.lowercased()
+                                    }
+                                }
+                            }
+                            Spacer()
+                        }
+                    }
+
+                    ShowcaseSection(title: "Chip — Filters (multi-select)") {
+                        HStack(spacing: .space2) {
+                            ForEach(["Bold", "Italic", "Underline"], id: \.self) { label in
+                                AppChip(
+                                    label: label,
+                                    variant: .filters,
+                                    isActive: activeFilters.contains(label.lowercased())
+                                ) {
+                                    withAnimation(.easeOut(duration: 0.15)) {
+                                        let key = label.lowercased()
+                                        if activeFilters.contains(key) {
+                                            activeFilters.remove(key)
+                                        } else {
+                                            activeFilters.insert(key)
+                                        }
+                                    }
+                                }
+                            }
+                            Spacer()
+                        }
+                    }
+
+                    ShowcaseSection(title: "Chip — Disabled") {
+                        HStack(spacing: .space2) {
+                            AppChip(label: "Active + disabled", variant: .chipTabs, isActive: true, isDisabled: true) {}
+                            AppChip(label: "Inactive + disabled", variant: .filters, isDisabled: true) {}
+                            Spacer()
+                        }
+                    }
+
+                    // ── Tabs ──────────────────────────────────────────────
+                    ShowcaseSection(title: "Tabs — Animated indicator") {
+                        AppTabs(
+                            items: [
+                                AppTabItem(id: "design",  label: "Design"),
+                                AppTabItem(id: "code",    label: "Code"),
+                                AppTabItem(id: "preview", label: "Preview"),
+                            ],
+                            activeTab: $activeTab
+                        )
+
+                        Group {
+                            if activeTab == "design" {
+                                Text("Design tab content")
+                            } else if activeTab == "code" {
+                                Text("Code tab content")
+                            } else {
+                                Text("Preview tab content")
+                            }
+                        }
+                        .font(.appBodySmall)
+                        .foregroundStyle(Color.typographySecondary)
+                        .padding(.top, .space1)
+                    }
+
+                    ShowcaseSection(title: "Tabs — Sizes") {
+                        VStack(alignment: .leading, spacing: .space3) {
+                            AppTabs(
+                                items: [
+                                    AppTabItem(id: "a", label: "Week"),
+                                    AppTabItem(id: "b", label: "Month"),
+                                    AppTabItem(id: "c", label: "Year"),
+                                ],
+                                activeTab: .constant("a"),
+                                size: .sm
+                            )
+                            AppTabs(
+                                items: [
+                                    AppTabItem(id: "a", label: "Week"),
+                                    AppTabItem(id: "b", label: "Month"),
+                                    AppTabItem(id: "c", label: "Year"),
+                                ],
+                                activeTab: .constant("a"),
+                                size: .md
+                            )
+                            AppTabs(
+                                items: [
+                                    AppTabItem(id: "a", label: "Week"),
+                                    AppTabItem(id: "b", label: "Month"),
+                                    AppTabItem(id: "c", label: "Year"),
+                                ],
+                                activeTab: .constant("a"),
+                                size: .lg
+                            )
+                        }
+                    }
+
+                    // ── SegmentControlBar ──────────────────────────────────
+                    ShowcaseSection(title: "SegmentControlBar — Segment") {
+                        AppSegmentControlBar(
+                            items: [
+                                AppSegmentItem(id: "week",  label: "Week"),
+                                AppSegmentItem(id: "month", label: "Month"),
+                                AppSegmentItem(id: "year",  label: "Year"),
+                            ],
+                            selected: $segSelected,
+                            type: .segmentControl
+                        )
+                    }
+
+                    ShowcaseSection(title: "SegmentControlBar — Chips") {
+                        AppSegmentControlBar(
+                            items: [
+                                AppSegmentItem(id: "all",    label: "All"),
+                                AppSegmentItem(id: "design", label: "Design"),
+                                AppSegmentItem(id: "code",   label: "Code"),
+                            ],
+                            selected: $chipSelected,
+                            type: .chips
+                        )
+                    }
+
+                    ShowcaseSection(title: "SegmentControlBar — Filters (multi)") {
+                        AppSegmentControlBarMulti(
+                            items: [
+                                AppSegmentItem(id: "ios",     label: "iOS"),
+                                AppSegmentItem(id: "android", label: "Android"),
+                                AppSegmentItem(id: "web",     label: "Web"),
+                            ],
+                            selected: $filterSelected
+                        )
+                    }
+
+                    // ── Divider ───────────────────────────────────────────
+                    ShowcaseSection(title: "Divider") {
+                        VStack(alignment: .leading, spacing: .space3) {
+                            Text("Row divider (default)").font(.appCaptionSmall).foregroundStyle(Color.typographyMuted)
+                            Text("Item A").font(.appBodyMedium)
+                            AppDivider(type: .row)
+                            Text("Item B").font(.appBodyMedium)
+                            AppDivider(type: .row)
+                            Text("Item C").font(.appBodyMedium)
+
+                            Text("Section divider").font(.appCaptionSmall).foregroundStyle(Color.typographyMuted).padding(.top, .space2)
+                            AppDivider(type: .section)
+
+                            Text("Labeled divider").font(.appCaptionSmall).foregroundStyle(Color.typographyMuted).padding(.top, .space2)
+                            AppDivider(type: .section, label: "or")
+
+                            Text("Vertical divider").font(.appCaptionSmall).foregroundStyle(Color.typographyMuted).padding(.top, .space2)
+                            HStack(spacing: .space3) {
+                                Text("Left").font(.appBodyMedium)
+                                AppDivider(orientation: .vertical).frame(height: 20)
+                                Text("Right").font(.appBodyMedium)
+                            }
+                        }
+                    }
+
+                    // ── Toast ─────────────────────────────────────────────
+                    ShowcaseSection(title: "Toast — All variants") {
+                        VStack(spacing: .space3) {
+                            AppToast(variant: .default, message: "Settings saved", dismissible: true)
+                            AppToast(variant: .success, message: "Upload complete!", description: "Your file is ready to share.")
+                            AppToast(variant: .warning, message: "Connection unstable", actionLabel: "Retry") {}
+                            AppToast(variant: .error,   message: "Failed to save", description: "Check your connection.", dismissible: true)
+                            AppToast(variant: .info,    message: "New update available", actionLabel: "Update now") {}
+                        }
+                    }
+
+                    ShowcaseSection(title: "Toast — Live trigger") {
+                        HStack(spacing: .space2) {
+                            ForEach([
+                                ("Default", AppToastVariant.default),
+                                ("Success", AppToastVariant.success),
+                                ("Error",   AppToastVariant.error),
+                            ], id: \.0) { label, variant in
+                                AppButton(label: label, variant: .secondary, size: .sm) {
+                                    toastVariant = variant
+                                    toastMessage = "\(label) notification"
+                                    withAnimation { showToast = true }
+                                }
+                            }
+                            Spacer()
+                        }
+                    }
+
+                    // ── Input Field ───────────────────────────────────────
+                    ShowcaseSection(title: "Input Field") {
+                        VStack(spacing: .space3) {
+                            AppInputField(text: $name, label: "Full Name", placeholder: "Enter your name")
+                            AppInputField(text: .constant("user@example.com"), label: "Email", state: .success, hint: "Looks good!")
+                            AppInputField(text: $email, label: "Email", state: .error, hint: "Please enter a valid email address")
+                            AppInputField(text: .constant(""), label: "Password", placeholder: "Enter password", state: .warning, hint: "Weak password")
+                            AppInputField(text: .constant("Disabled value"), label: "Disabled", isDisabled: true)
+                        }
+                    }
+
+                    ShowcaseSection(title: "Text Field (multiline)") {
+                        AppTextField(text: $bio, label: "Bio", placeholder: "Tell us about yourself…")
+                    }
+
+                    // ── Thumbnail ─────────────────────────────────────────
+                    ShowcaseSection(title: "Thumbnail — Square") {
+                        HStack(spacing: .space3) {
+                            ForEach([
+                                ("xs",  AppThumbnailSize.xs),
+                                ("sm",  AppThumbnailSize.sm),
+                                ("md",  AppThumbnailSize.md),
+                                ("lg",  AppThumbnailSize.lg),
+                                ("xl",  AppThumbnailSize.xl),
+                                ("xxl", AppThumbnailSize.xxl),
+                            ], id: \.0) { label, size in
+                                VStack(spacing: 4) {
+                                    AppThumbnail(size: size)
+                                    Text(label).font(.system(size: 9)).foregroundStyle(Color.typographyMuted)
+                                }
+                            }
+                            Spacer()
+                        }
+                    }
+
+                    ShowcaseSection(title: "Thumbnail — Circular") {
+                        HStack(spacing: .space3) {
+                            ForEach([
+                                ("xs",  AppThumbnailSize.xs),
+                                ("sm",  AppThumbnailSize.sm),
+                                ("md",  AppThumbnailSize.md),
+                                ("lg",  AppThumbnailSize.lg),
+                                ("xl",  AppThumbnailSize.xl),
+                                ("xxl", AppThumbnailSize.xxl),
+                            ], id: \.0) { label, size in
+                                VStack(spacing: 4) {
+                                    AppThumbnail(size: size, rounded: true)
+                                    Text(label).font(.system(size: 9)).foregroundStyle(Color.typographyMuted)
+                                }
+                            }
+                            Spacer()
+                        }
+                    }
+
+                    ShowcaseSection(title: "Thumbnail — Initials fallback") {
+                        HStack(spacing: .space3) {
+                            AppThumbnail(size: .lg,  rounded: true,  accessibilityLabel: "Alice Brown") { Text("AB") }
+                            AppThumbnail(size: .xl,  rounded: true,  accessibilityLabel: "John Doe")    { Text("JD") }
+                            AppThumbnail(size: .xxl, rounded: false, accessibilityLabel: "Maria Kim")   { Text("MK") }
+                            Spacer()
+                        }
+                    }
+
                 }
                 .padding(.horizontal, .space4)
                 .padding(.vertical, .space6)
@@ -181,6 +494,11 @@ struct ContentView: View {
             .background(Color.surfacesBasePrimary)
             .navigationTitle("Component Showcase")
             .navigationBarTitleDisplayMode(.large)
+        }
+        .toastOverlay(isPresented: $showToast) {
+            AppToast(variant: toastVariant, message: toastMessage, dismissible: true) {
+                withAnimation { showToast = false }
+            }
         }
     }
 }
