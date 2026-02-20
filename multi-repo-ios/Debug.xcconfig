@@ -1,0 +1,25 @@
+// Debug build configuration overrides for faster incremental builds.
+//
+// WHY THESE SETTINGS:
+// PhosphorSwift bundles 9,108 SVG imagesets in its Assets.xcassets.
+// actool (the asset catalog compiler) processes all of them on the first
+// clean build (~2-3 min). After that, incremental builds skip it unless
+// DerivedData is wiped. These settings prevent unnecessary invalidation.
+
+// Disable source indexing — biggest single win for SPM packages with large
+// asset catalogs. Indexing re-walks all package sources every build.
+COMPILER_INDEX_STORE_ENABLE = NO
+
+// Only build for the active simulator arch (arm64), not all slices.
+// Already set in project but explicitly reinforce here.
+ONLY_ACTIVE_ARCH = YES
+
+// Use DWARF without dSYM in Debug — dSYM generation is slow and not needed
+// when debugging locally in the simulator.
+DEBUG_INFORMATION_FORMAT = dwarf
+
+// No whole-module optimization in Debug — incremental per-file compilation.
+SWIFT_OPTIMIZATION_LEVEL = -Onone
+
+// Disable dead code stripping in Debug — not needed, saves link time.
+DEAD_CODE_STRIPPING = NO
