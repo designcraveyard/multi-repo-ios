@@ -1,30 +1,20 @@
 // AppToast.swift
 // Figma source: bubbles-kit › node 108:4229 "Toast Message"
 //
-// Variants: Type(Default/Success/Warning/Error/Info) × has-action × has-dismiss
+// Default variant only: pill-shaped dark toast with info icon, message, optional action button, and dismiss button.
 //
 // Usage:
-//   AppToast(variant: .success, message: "Saved!", dismissible: true)
-//   AppToast(variant: .error, message: "Failed", description: "Check your connection", actionLabel: "Retry") { retry() }
+//   AppToast(message: "Saved!", dismissible: true)
+//   AppToast(message: "Done", actionLabel: "View") { viewDetails() }
 //
 // Presentation helper:
-//   .toastOverlay(isPresented: $showToast) { AppToast(variant: .success, message: "Done") }
+//   .toastOverlay(isPresented: $showToast) { AppToast(message: "Done") }
 
 import SwiftUI
 
-// MARK: - Types
+// MARK: - Default Toast Spec
 
-public enum AppToastVariant {
-    case `default`  // inverse bg
-    case success
-    case warning
-    case error
-    case info
-}
-
-// MARK: - Variant Spec
-
-private struct ToastVariantSpec {
+private struct ToastSpec {
     let background: Color
     let borderColor: Color
     let iconName: String        // SF Symbol fallback — in production swap for Ph icon
@@ -33,63 +23,19 @@ private struct ToastVariantSpec {
     let descColor: Color
 }
 
-private extension AppToastVariant {
-    var spec: ToastVariantSpec {
-        switch self {
-        case .default:
-            return ToastVariantSpec(
-                background: .surfacesInversePrimary,
-                borderColor: .clear,
-                iconName: "info.circle.fill",
-                iconColor: .typographyInversePrimary,
-                textColor: .typographyInversePrimary,
-                descColor: .typographyInverseSecondary
-            )
-        case .success:
-            return ToastVariantSpec(
-                background: .surfacesSuccessSubtle,
-                borderColor: .borderSuccess,
-                iconName: "checkmark.circle.fill",
-                iconColor: .iconsSuccess,
-                textColor: .typographySuccess,
-                descColor: .typographySuccess
-            )
-        case .warning:
-            return ToastVariantSpec(
-                background: .surfacesWarningSubtle,
-                borderColor: .borderWarning,
-                iconName: "exclamationmark.triangle.fill",
-                iconColor: .iconsWarning,
-                textColor: .typographyWarning,
-                descColor: .typographyWarning
-            )
-        case .error:
-            return ToastVariantSpec(
-                background: .surfacesErrorSubtle,
-                borderColor: .borderError,
-                iconName: "xmark.circle.fill",
-                iconColor: .iconsError,
-                textColor: .typographyError,
-                descColor: .typographyError
-            )
-        case .info:
-            return ToastVariantSpec(
-                background: .surfacesAccentLowContrast,
-                borderColor: .surfacesAccentPrimary,
-                iconName: "info.circle.fill",
-                iconColor: .iconsAccent,
-                textColor: .typographyAccent,
-                descColor: .typographyAccent
-            )
-        }
-    }
-}
+private let toastSpec = ToastSpec(
+    background: .surfacesInversePrimary,
+    borderColor: .clear,
+    iconName: "info.circle.fill",
+    iconColor: .typographyInversePrimary,
+    textColor: .typographyInversePrimary,
+    descColor: .typographyInverseSecondary
+)
 
 // MARK: - AppToast
 
 public struct AppToast: View {
 
-    let variant: AppToastVariant
     let message: String
     let description: String?
     let actionLabel: String?
@@ -98,7 +44,6 @@ public struct AppToast: View {
     let onDismiss: (() -> Void)?
 
     public init(
-        variant: AppToastVariant = .default,
         message: String,
         description: String? = nil,
         actionLabel: String? = nil,
@@ -106,7 +51,6 @@ public struct AppToast: View {
         dismissible: Bool = false,
         onDismiss: (() -> Void)? = nil
     ) {
-        self.variant = variant
         self.message = message
         self.description = description
         self.actionLabel = actionLabel
@@ -115,12 +59,10 @@ public struct AppToast: View {
         self.onDismiss = onDismiss
     }
 
-    private var isDefault: Bool { variant == .default }
-
     public var body: some View {
-        let spec = variant.spec
+        let spec = toastSpec
 
-        HStack(alignment: isDefault ? .center : .top, spacing: CGFloat.space3) {
+        HStack(alignment: .center, spacing: CGFloat.space3) {
             // Status icon
             Image(systemName: spec.iconName)
                 .resizable()
@@ -129,42 +71,15 @@ public struct AppToast: View {
                 .foregroundStyle(spec.iconColor)
 
             // Content
-            if isDefault {
-                Text(message)
-                    .font(.appBodySmallEm)
-                    .foregroundStyle(spec.textColor)
-                    .lineLimit(2)
-            } else {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(message)
-                        .font(.appBodySmallEm)
-                        .foregroundStyle(spec.textColor)
-                        .lineLimit(3)
-
-                    if let desc = description {
-                        Text(desc)
-                            .font(.appBodySmall)
-                            .foregroundStyle(spec.descColor.opacity(0.8))
-                            .lineLimit(2)
-                    }
-
-                    if let label = actionLabel, let action = onAction {
-                        Button(action: action) {
-                            Text(label)
-                                .font(.appCTASmall)
-                                .foregroundStyle(spec.textColor)
-                                .underline()
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.top, 2)
-                    }
-                }
-            }
+            Text(message)
+                .font(.appBodySmallEm)
+                .foregroundStyle(spec.textColor)
+                .lineLimit(2)
 
             Spacer(minLength: 0)
 
-            // Action pill button (default variant only)
-            if isDefault, let label = actionLabel, let action = onAction {
+            // Action pill button
+            if let label = actionLabel, let action = onAction {
                 Button(action: action) {
                     Text(label)
                         .font(.appCTASmall)
@@ -191,27 +106,15 @@ public struct AppToast: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(.leading, isDefault ? CGFloat.space5 : CGFloat.space4)
-        .padding(.trailing, isDefault ? CGFloat.space3 : CGFloat.space4)
+        .padding(.leading, CGFloat.space5)
+        .padding(.trailing, CGFloat.space3)
         .padding(.vertical, CGFloat.space3)
         .background(
-            Group {
-                if isDefault {
-                    Capsule()
-                        .fill(spec.background)
-                        .overlay(Capsule().strokeBorder(spec.borderColor, lineWidth: 1))
-                } else {
-                    RoundedRectangle(cornerRadius: .radiusMD)
-                        .fill(spec.background)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: .radiusMD)
-                                .strokeBorder(spec.borderColor, lineWidth: 1)
-                        )
-                }
-            }
+            Capsule()
+                .fill(spec.background)
+                .overlay(Capsule().strokeBorder(spec.borderColor, lineWidth: 1))
         )
-        .shadow(color: isDefault ? .clear : Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
-        .frame(maxWidth: isDefault ? .infinity : 360)
+        .frame(maxWidth: .infinity)
     }
 }
 
@@ -260,16 +163,11 @@ public extension View {
 
 // MARK: - Preview
 
-#Preview("Toast Variants") {
-    ScrollView {
-        VStack(spacing: CGFloat.space4) {
-            AppToast(variant: .default, message: "Settings saved", dismissible: true)
-            AppToast(variant: .success, message: "Upload complete!", description: "Your file is ready to share.")
-            AppToast(variant: .warning, message: "Connection unstable", actionLabel: "Retry") {}
-            AppToast(variant: .error, message: "Failed to save", description: "Check your connection and try again.", dismissible: true)
-            AppToast(variant: .info, message: "New update available", actionLabel: "Update now") {}
-        }
-        .padding(CGFloat.space4)
+#Preview("Toast Default") {
+    VStack(spacing: CGFloat.space4) {
+        AppToast(message: "Settings saved", dismissible: true)
+        AppToast(message: "Upload complete!", actionLabel: "View") {}
     }
+    .padding(CGFloat.space4)
     .background(Color.appBorderDefault)
 }

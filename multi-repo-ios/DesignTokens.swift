@@ -192,7 +192,7 @@ extension Color {
     /// Figma: Surfaces/BrandInteractiveHover
     static let surfacesBrandInteractiveHover                 = adaptive(light: "#27272A", dark: "#E4E4E7")
     /// Figma: Surfaces/BrandInteractivePressed
-    static let surfacesBrandInteractivePressed               = adaptive(light: "#09090B", dark: "#A1A1AA")
+    static let surfacesBrandInteractivePressed               = adaptive(light: "#3F3F46", dark: "#A1A1AA")
     /// Figma: Surfaces/BrandInteractiveLowContrast
     static let surfacesBrandInteractiveLowContrast           = adaptive(light: "#E4E4E7", dark: "#27272A")
     /// Figma: Surfaces/BrandInteractiveLowContrastHover

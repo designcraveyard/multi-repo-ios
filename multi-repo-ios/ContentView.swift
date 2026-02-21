@@ -52,7 +52,6 @@ struct ContentView: View {
 
     // Toast
     @State private var showToast = false
-    @State private var toastVariant: AppToastVariant = .success
     @State private var toastMessage = ""
 
     // InputField
@@ -441,13 +440,13 @@ struct ContentView: View {
                     }
 
                     // ── Toast ─────────────────────────────────────────────
-                    ShowcaseSection(title: "Toast — All variants") {
+                    ShowcaseSection(title: "Toast — Default") {
                         VStack(spacing: .space3) {
-                            AppToast(variant: .default, message: "Settings saved", dismissible: true)
-                            AppToast(variant: .success, message: "Upload complete!", description: "Your file is ready to share.")
-                            AppToast(variant: .warning, message: "Connection unstable", actionLabel: "Retry") {}
-                            AppToast(variant: .error,   message: "Failed to save", description: "Check your connection.", dismissible: true)
-                            AppToast(variant: .info,    message: "New update available", actionLabel: "Update now") {}
+                            AppToast(message: "Settings saved", dismissible: true)
+                            AppToast(message: "Upload complete!", description: "Your file is ready to share.")
+                            AppToast(message: "Connection unstable", actionLabel: "Retry") {}
+                            AppToast(message: "Failed to save", description: "Check your connection.", dismissible: true)
+                            AppToast(message: "New update available", actionLabel: "Update now") {}
                         }
                     }
 
@@ -455,13 +454,12 @@ struct ContentView: View {
                         HScrollRow {
                             HStack(spacing: .space2) {
                                 ForEach([
-                                    ("Default", AppToastVariant.default),
-                                    ("Success", AppToastVariant.success),
-                                    ("Error",   AppToastVariant.error),
-                                ], id: \.0) { label, variant in
+                                    "Settings saved",
+                                    "Upload complete",
+                                    "Connection error",
+                                ], id: \.self) { label in
                                     AppButton(label: label, variant: .secondary, size: .sm) {
-                                        toastVariant = variant
-                                        toastMessage = "\(label) notification"
+                                        toastMessage = label
                                         withAnimation { showToast = true }
                                     }
                                 }
@@ -771,9 +769,9 @@ struct ContentView: View {
             .navigationBarTitleDisplayMode(.large)
         }
         .toastOverlay(isPresented: $showToast) {
-            AppToast(variant: toastVariant, message: toastMessage, dismissible: true) {
+            AppToast(message: toastMessage, dismissible: true, onDismiss: {
                 withAnimation { showToast = false }
-            }
+            })
         }
     }
 }

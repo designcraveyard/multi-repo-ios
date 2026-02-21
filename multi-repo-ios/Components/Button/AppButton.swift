@@ -224,8 +224,8 @@ public struct AppButton: View {
                 ProgressView()
                     .progressViewStyle(.circular)
                     .tint(colors.foreground)
-                    .frame(width: spec.iconSize, height: spec.iconSize)
                     .scaleEffect(spec.iconSize / .iconSizeMd) // scale relative to md baseline
+                    .frame(width: spec.iconSize, height: spec.iconSize)
             } else if let icon = leadingIcon {
                 icon
                     .frame(width: spec.iconSize, height: spec.iconSize)
