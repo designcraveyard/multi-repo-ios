@@ -80,7 +80,7 @@ public struct AppStepper: View {
 
             if !isLast {
                 Rectangle()
-                    .fill(Color.surfacesBaseHighContrast)
+                    .fill(Color.appBorderDefault)
                     .frame(width: 2)
                     .frame(maxHeight: .infinity)
             }

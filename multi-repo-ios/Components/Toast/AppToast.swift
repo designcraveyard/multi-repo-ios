@@ -271,5 +271,5 @@ public extension View {
         }
         .padding(CGFloat.space4)
     }
-    .background(Color.surfacesBaseHighContrast)
+    .background(Color.appBorderDefault)
 }

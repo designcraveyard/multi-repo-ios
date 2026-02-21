@@ -155,7 +155,7 @@ public struct AppInputField: View {
                     if leadingSeparator {
                         Divider()
                             .frame(width: 1)
-                            .background(Color.surfacesBaseHighContrast)
+                            .background(Color.appBorderDefault)
                     }
                 }
 
@@ -190,7 +190,7 @@ public struct AppInputField: View {
                     if trailingSeparator {
                         Divider()
                             .frame(width: 1)
-                            .background(Color.surfacesBaseHighContrast)
+                            .background(Color.appBorderDefault)
                     }
                     trailingLabel
                 }

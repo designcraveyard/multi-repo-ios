@@ -45,7 +45,7 @@ public struct AppDivider: View {
     }
 
     private var lineColor: Color {
-        type == .section ? .surfacesBaseLowContrast : .surfacesBaseLowContrastPressed
+        type == .section ? .appBorderDefault : .appBorderMuted
     }
 
     private var lineHeight: CGFloat {

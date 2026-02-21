@@ -269,7 +269,7 @@ struct ContentView: View {
                                 ForEach(["Design", "Code", "Product"], id: \.self) { label in
                                     AppChip(
                                         label: label,
-                                        variant: .chipTabs,
+                                        variant: .chipTabs,size: .lg,
                                         isActive: activeChip == label.lowercased()
                                     ) {
                                         withAnimation(.easeOut(duration: 0.15)) {
@@ -739,7 +739,7 @@ struct ContentView: View {
                             AppListItem(
                                 title: "Pack luggage",
                                 subtitle: "Ready for the trip",
-                                thumbnail: AppThumbnailConfig(size: .sm),
+                                thumbnail: AppThumbnailConfig(size: .sm, rounded: true),
                                 trailing: .badge(label: "New", type: .brand),
                                 divider: true
                             )
