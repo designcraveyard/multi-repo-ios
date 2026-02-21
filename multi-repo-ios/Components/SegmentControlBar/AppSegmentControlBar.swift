@@ -100,7 +100,7 @@ public struct AppSegmentControlBar: View {
             // Figma: paddingLeft/Right=4, paddingTop/Bottom=2
             .padding(.horizontal, 4)
             .padding(.vertical, 2)
-            .background(Color.surfacesBaseLowContrastPressed)
+            .background(Color.surfacesBaseLowContrast)
             .clipShape(Capsule())
         } else {
             // Chips/Filters: content-sized pills
@@ -177,7 +177,7 @@ public struct AppSegmentControlBar: View {
         case .segmentControl:
             Color.clear
         case .chips:
-            Capsule().fill(isActive ? Color.surfacesBaseLowContrastPressed : Color.surfacesBaseLowContrast)
+            Capsule().fill(isActive ? Color.surfacesBaseLowContrast : Color.surfacesBaseLowContrast)
         case .filters:
             Capsule().fill(Color.surfacesBasePrimary)
         }
