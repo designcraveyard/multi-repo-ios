@@ -539,6 +539,229 @@ struct ContentView: View {
                         }
                     }
 
+                    // ── Label ──────────────────────────────────────────────
+                    ShowcaseSection(title: "Label — Sizes × Types") {
+                        VStack(alignment: .leading, spacing: .space3) {
+                            ForEach([
+                                ("Small", AppLabelSize.sm),
+                                ("Medium", AppLabelSize.md),
+                                ("Large", AppLabelSize.lg),
+                            ], id: \.0) { sizeName, size in
+                                VStack(alignment: .leading, spacing: .space1) {
+                                    Text(sizeName)
+                                        .font(.appCaptionSmall)
+                                        .foregroundStyle(Color.typographyMuted)
+                                    HScrollRow {
+                                        HStack(spacing: .space4) {
+                                            AppLabel(label: "Secondary", size: size, type: .secondaryAction)
+                                            AppLabel(label: "Primary",   size: size, type: .primaryAction)
+                                            AppLabel(label: "Brand",     size: size, type: .brandInteractive)
+                                            AppLabel(label: "Info",      size: size, type: .information)
+                                        }
+                                        .padding(.trailing, .space4)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    ShowcaseSection(title: "Label — With Icons") {
+                        HScrollRow {
+                            HStack(spacing: .space4) {
+                                AppLabel(
+                                    label: "Verified",
+                                    size: .lg,
+                                    type: .primaryAction,
+                                    leadingIcon: AnyView(Ph.checkCircle.regular.iconSize(.lg))
+                                )
+                                AppLabel(
+                                    label: "USD",
+                                    size: .md,
+                                    type: .secondaryAction,
+                                    trailingIcon: AnyView(Ph.caretDown.regular.iconSize(.md))
+                                )
+                                AppLabel(
+                                    label: "Info",
+                                    size: .sm,
+                                    type: .information,
+                                    leadingIcon: AnyView(Ph.info.regular.iconSize(.sm)),
+                                    trailingIcon: AnyView(Ph.caretRight.regular.iconSize(.sm))
+                                )
+                            }
+                            .padding(.trailing, .space4)
+                        }
+                    }
+
+                    // ── Input Field — Icon Slots ───────────────────────────
+                    ShowcaseSection(title: "Input Field — Icon Slots") {
+                        VStack(spacing: .space3) {
+                            AppInputField(
+                                text: $name,
+                                label: "Leading icon",
+                                placeholder: "Search…",
+                                leadingIcon: AnyView(Ph.magnifyingGlass.regular.iconSize(.md))
+                            )
+                            AppInputField(
+                                text: $name,
+                                label: "Trailing icon",
+                                placeholder: "Password",
+                                trailingIcon: AnyView(Ph.eye.regular.iconSize(.md))
+                            )
+                            AppInputField(
+                                text: .constant("query"),
+                                label: "Both icons",
+                                leadingIcon: AnyView(Ph.magnifyingGlass.regular.iconSize(.md)),
+                                trailingIcon: AnyView(Ph.x.regular.iconSize(.md))
+                            )
+                        }
+                    }
+
+                    // ── Input Field — Label Slots ──────────────────────────
+                    ShowcaseSection(title: "Input Field — Label Slots") {
+                        VStack(spacing: .space3) {
+                            AppInputField(
+                                text: $bio,
+                                label: "Leading label",
+                                placeholder: "0.00",
+                                leadingLabel: AnyView(AppLabel(label: "USD", size: .md, type: .secondaryAction))
+                            )
+                            AppInputField(
+                                text: $bio,
+                                label: "Leading label + separator",
+                                placeholder: "0.00",
+                                leadingLabel: AnyView(AppLabel(label: "USD", size: .md, type: .secondaryAction)),
+                                leadingSeparator: true
+                            )
+                            AppInputField(
+                                text: $bio,
+                                label: "Trailing label",
+                                placeholder: "Enter amount",
+                                trailingLabel: AnyView(AppLabel(label: "kg", size: .md, type: .information))
+                            )
+                            AppInputField(
+                                text: $bio,
+                                label: "Trailing label + separator",
+                                placeholder: "Enter amount",
+                                trailingLabel: AnyView(AppLabel(label: "kg", size: .md, type: .information)),
+                                trailingSeparator: true
+                            )
+                            AppInputField(
+                                text: $bio,
+                                label: "Both labels + separators",
+                                placeholder: "0.00",
+                                leadingLabel: AnyView(AppLabel(label: "From", size: .md, type: .secondaryAction)),
+                                trailingLabel: AnyView(AppLabel(label: "USD", size: .md, type: .brandInteractive)),
+                                leadingSeparator: true,
+                                trailingSeparator: true
+                            )
+                            AppInputField(
+                                text: .constant("42.00"),
+                                label: "Label slot + success state",
+                                state: .success,
+                                hint: "Valid amount",
+                                leadingLabel: AnyView(AppLabel(label: "USD", size: .md, type: .secondaryAction)),
+                                leadingSeparator: true
+                            )
+                        }
+                    }
+
+                    // ── TextBlock ──────────────────────────────────────────
+                    ShowcaseSection(title: "TextBlock — All slots") {
+                        AppTextBlock(
+                            overline: "Recent",
+                            title: "Trip to Bali",
+                            subtext: "Summer vacation",
+                            body: "Some description can come here regarding the task.",
+                            metadata: "Posted 2d ago"
+                        )
+                    }
+
+                    ShowcaseSection(title: "TextBlock — Combinations") {
+                        VStack(alignment: .leading, spacing: .space3) {
+                            AppTextBlock(title: "Title only")
+                            AppDivider(type: .row)
+                            AppTextBlock(title: "Ayurveda Books", subtext: "bought for Anjali at airport")
+                            AppDivider(type: .row)
+                            AppTextBlock(body: "Some description text here.", metadata: "3 days ago")
+                        }
+                    }
+
+                    // ── StepIndicator ─────────────────────────────────────
+                    ShowcaseSection(title: "StepIndicator") {
+                        HStack(spacing: .space6) {
+                            VStack(spacing: .space2) {
+                                AppStepIndicator(completed: false)
+                                Text("incomplete")
+                                    .font(.appCaptionSmall)
+                                    .foregroundStyle(Color.typographyMuted)
+                            }
+                            VStack(spacing: .space2) {
+                                AppStepIndicator(completed: true)
+                                Text("completed")
+                                    .font(.appCaptionSmall)
+                                    .foregroundStyle(Color.typographyMuted)
+                            }
+                        }
+                    }
+
+                    // ── Stepper ───────────────────────────────────────────
+                    ShowcaseSection(title: "Stepper — All completed") {
+                        AppStepper(steps: [
+                            AppStepperStep(title: "Ordered",   subtitle: "Mar 1", completed: true),
+                            AppStepperStep(title: "Shipped",   subtitle: "Mar 2", completed: true),
+                            AppStepperStep(title: "Delivered", subtitle: "Mar 4", completed: true),
+                        ])
+                    }
+
+                    ShowcaseSection(title: "Stepper — Mixed state") {
+                        AppStepper(steps: [
+                            AppStepperStep(title: "Ayurveda Books", subtitle: "bought for Anjali at airport", completed: true),
+                            AppStepperStep(title: "Pack luggage", completed: false),
+                            AppStepperStep(title: "Depart",       subtitle: "Flight at 08:00", completed: false),
+                        ])
+                    }
+
+                    ShowcaseSection(title: "Stepper — Single step with body") {
+                        AppStepper(steps: [
+                            AppStepperStep(title: "Submit application", body: "Fill in all required fields before submitting."),
+                        ])
+                    }
+
+                    // ── ListItem ──────────────────────────────────────────
+                    ShowcaseSection(title: "ListItem — Variants") {
+                        VStack(spacing: 0) {
+                            AppListItem(title: "Title only", divider: true)
+                            AppListItem(
+                                title: "Ayurveda Books",
+                                subtitle: "bought for Anjali at airport",
+                                divider: true
+                            )
+                            AppListItem(
+                                title: "Pack luggage",
+                                subtitle: "Ready for the trip",
+                                thumbnail: AppThumbnailConfig(size: .sm),
+                                trailing: .badge(label: "New", type: .brand),
+                                divider: true
+                            )
+                            AppListItem(
+                                title: "Depart",
+                                subtitle: "Flight at 08:00",
+                                trailing: .button(label: "Edit", action: {}),
+                                divider: true
+                            )
+                            AppListItem(
+                                title: "Trip to Bali",
+                                subtitle: "Summer vacation",
+                                body: "Remember to pack sunscreen.",
+                                trailing: .iconButton(
+                                    icon: AnyView(Ph.dotsThree.regular.iconSize(.md)),
+                                    accessibilityLabel: "More options",
+                                    action: {}
+                                )
+                            )
+                        }
+                    }
+
                 }
                 .padding(.horizontal, .space4)
                 .padding(.vertical, .space6)
