@@ -3,12 +3,17 @@
 //
 // Axes: State(Default/Disabled/Focus/Filled/Success/Warning/Error) × Type(Default/TextField) = 11
 //
+// Figma primitive slots (left→right):
+//   [leadingLabel?] [leadingSeparator?] [text field] [trailingSeparator?] [trailingLabel?]
+//
 // Usage:
 //   AppInputField(text: $name, label: "Full Name", placeholder: "Enter your name")
 //   AppInputField(text: $email, label: "Email", state: .error, hint: "Invalid email address")
-//   AppTextField(text: $bio, label: "Bio", placeholder: "Tell us about yourself")
+//   AppInputField(text: $amount, label: "Amount", leadingLabel: AnyView(AppLabel(label: "USD")), leadingSeparator: true)
+//   AppTextField(text: $bio, label: "Bio", placeholder: "Tell us about yourself…")
 
 import SwiftUI
+import PhosphorSwift
 
 // MARK: - Types
 
@@ -26,42 +31,58 @@ private struct InputStateSpec {
     let focusBorderColor: Color
     let hintColor: Color
     let iconColor: Color
+    let stateIcon: AnyView?
 }
 
 private extension AppInputFieldState {
     var spec: InputStateSpec {
         switch self {
         case .default:
+            // No border at rest — only shows on focus (borderActive)
             return InputStateSpec(
-                borderColor: .borderDefault,
+                borderColor: .clear,
                 focusBorderColor: .borderActive,
                 hintColor: .typographyMuted,
-                iconColor: .iconsMuted
+                iconColor: .iconsMuted,
+                stateIcon: nil
             )
         case .success:
             return InputStateSpec(
                 borderColor: .borderSuccess,
                 focusBorderColor: .borderSuccess,
                 hintColor: .typographySuccess,
-                iconColor: .iconsSuccess
+                iconColor: .iconsSuccess,
+                stateIcon: AnyView(Ph.checkCircle.regular.iconSize(.md).foregroundStyle(Color.iconsSuccess))
             )
         case .warning:
             return InputStateSpec(
                 borderColor: .borderWarning,
                 focusBorderColor: .borderWarning,
                 hintColor: .typographyWarning,
-                iconColor: .iconsWarning
+                iconColor: .iconsWarning,
+                stateIcon: AnyView(Ph.warning.regular.iconSize(.md).foregroundStyle(Color.iconsWarning))
             )
         case .error:
             return InputStateSpec(
                 borderColor: .borderError,
                 focusBorderColor: .borderError,
                 hintColor: .typographyError,
-                iconColor: .iconsError
+                iconColor: .iconsError,
+                stateIcon: AnyView(Ph.warningCircle.regular.iconSize(.md).foregroundStyle(Color.iconsError))
             )
         }
     }
 }
+
+// MARK: - Shared Label Style
+
+private let LABEL_FONT: Font = .appBodySmallEm
+private let HINT_FONT: Font = .appCaptionMedium
+private let INPUT_FONT: Font = .appBodyMedium
+// Figma: radius-lg (16pt mobile). No border at rest for default state — border only on focus.
+private let INPUT_CORNER_RADIUS: CGFloat = 16
+private let INPUT_H_PADDING: CGFloat = 16
+private let INPUT_V_PADDING: CGFloat = 14
 
 // MARK: - AppInputField (single line)
 
@@ -74,6 +95,10 @@ public struct AppInputField: View {
     let hint: String?
     let leadingIcon: AnyView?
     let trailingIcon: AnyView?
+    let leadingLabel: AnyView?
+    let trailingLabel: AnyView?
+    let leadingSeparator: Bool
+    let trailingSeparator: Bool
     let isDisabled: Bool
 
     @FocusState private var isFocused: Bool
@@ -86,6 +111,10 @@ public struct AppInputField: View {
         hint: String? = nil,
         leadingIcon: AnyView? = nil,
         trailingIcon: AnyView? = nil,
+        leadingLabel: AnyView? = nil,
+        trailingLabel: AnyView? = nil,
+        leadingSeparator: Bool = false,
+        trailingSeparator: Bool = false,
         isDisabled: Bool = false
     ) {
         self._text = text
@@ -95,6 +124,10 @@ public struct AppInputField: View {
         self.hint = hint
         self.leadingIcon = leadingIcon
         self.trailingIcon = trailingIcon
+        self.leadingLabel = leadingLabel
+        self.trailingLabel = trailingLabel
+        self.leadingSeparator = leadingSeparator
+        self.trailingSeparator = trailingSeparator
         self.isDisabled = isDisabled
     }
 
@@ -106,46 +139,77 @@ public struct AppInputField: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: CGFloat.space1) {
+            // ── Floating label ───────────────────────────────────────────────
             if let label {
                 Text(label)
-                    .font(.appBodySmallEm)
+                    .font(LABEL_FONT)
                     .foregroundStyle(Color.typographySecondary)
             }
 
+            // ── Input row ────────────────────────────────────────────────────
             HStack(spacing: CGFloat.space2) {
-                if let icon = leadingIcon {
-                    icon
-                        .frame(width: .iconSizeSm, height: .iconSizeSm)
+
+                // Leading label slot
+                if let leadingLabel {
+                    leadingLabel
+                    if leadingSeparator {
+                        Divider()
+                            .frame(width: 1)
+                            .background(Color.surfacesBaseHighContrast)
+                    }
+                }
+
+                // Leading simple icon
+                if let leadingIcon {
+                    leadingIcon
+                        .frame(width: CGFloat.iconSizeMd, height: CGFloat.iconSizeMd)
                         .foregroundStyle(spec.iconColor)
                 }
 
+                // TextField — tint controls cursor + selection colour
                 TextField(placeholder, text: $text)
-                    .font(.appBodyMedium)
+                    .font(INPUT_FONT)
                     .foregroundStyle(Color.typographyPrimary)
+                    .tint(Color.surfacesBrandInteractive)
                     .focused($isFocused)
                     .disabled(isDisabled)
                     .accessibilityHint(hint ?? "")
 
-                if let icon = trailingIcon {
-                    icon
-                        .frame(width: .iconSizeSm, height: .iconSizeSm)
+                // Trailing simple icon (user-provided overrides state icon)
+                if let trailingIcon {
+                    trailingIcon
+                        .frame(width: CGFloat.iconSizeMd, height: CGFloat.iconSizeMd)
                         .foregroundStyle(spec.iconColor)
+                } else if trailingLabel == nil, let stateIcon = spec.stateIcon {
+                    // Auto state icon when no trailing icon/label
+                    stateIcon
+                }
+
+                // Trailing label slot
+                if let trailingLabel {
+                    if trailingSeparator {
+                        Divider()
+                            .frame(width: 1)
+                            .background(Color.surfacesBaseHighContrast)
+                    }
+                    trailingLabel
                 }
             }
-            .padding(.horizontal, CGFloat.space4)
-            .padding(.vertical, 14)
+            .padding(.horizontal, INPUT_H_PADDING)
+            .padding(.vertical, INPUT_V_PADDING)
             .background(Color.surfacesBaseLowContrast)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .clipShape(RoundedRectangle(cornerRadius: INPUT_CORNER_RADIUS))
             .overlay(
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: INPUT_CORNER_RADIUS)
                     .strokeBorder(currentBorderColor, lineWidth: 1)
             )
             .opacity(isDisabled ? 0.5 : 1.0)
             .animation(.easeOut(duration: 0.15), value: isFocused)
 
+            // ── Hint ─────────────────────────────────────────────────────────
             if let hint {
                 Text(hint)
-                    .font(.appCaptionMedium)
+                    .font(HINT_FONT)
                     .foregroundStyle(spec.hintColor)
             }
         }
@@ -194,22 +258,23 @@ public struct AppTextField: View {
         VStack(alignment: .leading, spacing: CGFloat.space1) {
             if let label {
                 Text(label)
-                    .font(.appBodySmallEm)
+                    .font(LABEL_FONT)
                     .foregroundStyle(Color.typographySecondary)
             }
 
             TextEditor(text: $text)
-                .font(.appBodyMedium)
+                .font(INPUT_FONT)
                 .foregroundStyle(Color.typographyPrimary)
+                .tint(Color.surfacesBrandInteractive)
                 .focused($isFocused)
                 .disabled(isDisabled)
                 .frame(minHeight: CGFloat(minLines) * 20 + CGFloat.space4)
-                .padding(.horizontal, CGFloat.space4 - 4) // TextEditor has built-in inset
-                .padding(.vertical, 10) // ~14pt minus TextEditor built-in inset
+                .padding(.horizontal, INPUT_H_PADDING - 4) // TextEditor has built-in inset
+                .padding(.vertical, 10)
                 .background(Color.surfacesBaseLowContrast)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .clipShape(RoundedRectangle(cornerRadius: INPUT_CORNER_RADIUS))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 16)
+                    RoundedRectangle(cornerRadius: INPUT_CORNER_RADIUS)
                         .strokeBorder(currentBorderColor, lineWidth: 1)
                 )
                 .opacity(isDisabled ? 0.5 : 1.0)
@@ -217,7 +282,7 @@ public struct AppTextField: View {
 
             if let hint {
                 Text(hint)
-                    .font(.appCaptionMedium)
+                    .font(HINT_FONT)
                     .foregroundStyle(spec.hintColor)
             }
         }
@@ -226,23 +291,73 @@ public struct AppTextField: View {
 
 // MARK: - Preview
 
-#Preview("Input Field") {
-    @Previewable @State var name = ""
-    @Previewable @State var email = "user@example"
+#Preview("Input Field — All States") {
+    @Previewable @State var text1 = ""
+    @Previewable @State var text2 = "user@example.com"
+    @Previewable @State var text3 = ""
     @Previewable @State var bio = ""
 
     ScrollView {
         VStack(spacing: CGFloat.space4) {
 
-            AppInputField(text: $name, label: "Full Name", placeholder: "Enter your name")
-            AppInputField(text: .constant("user@example.com"), label: "Email", state: .success, hint: "Looks good!")
-            AppInputField(text: $email, label: "Email", state: .error, hint: "Please enter a valid email address")
-            AppInputField(text: .constant(""), label: "Password", placeholder: "Enter password", state: .warning, hint: "Weak password")
-            AppInputField(text: .constant("Disabled value"), label: "Disabled", isDisabled: true)
+            // ── Basic states ──────────────────────────────────────────────────
+            AppInputField(text: $text1, label: "Default", placeholder: "Enter text")
+            AppInputField(text: $text2, label: "Success", state: .success, hint: "Looks good!")
+            AppInputField(text: .constant("weak"), label: "Warning", state: .warning, hint: "Weak password")
+            AppInputField(text: .constant("user@bad"), label: "Error", state: .error, hint: "Invalid email address")
+            AppInputField(text: .constant("Disabled"), label: "Disabled", isDisabled: true)
 
             Divider()
 
+            // ── With icon slots ───────────────────────────────────────────────
+            AppInputField(
+                text: $text3,
+                label: "With leading icon",
+                placeholder: "Search…",
+                leadingIcon: AnyView(Ph.magnifyingGlass.regular.iconSize(.md))
+            )
+
+            AppInputField(
+                text: $text3,
+                label: "With trailing icon",
+                placeholder: "Password",
+                trailingIcon: AnyView(Ph.eye.regular.iconSize(.md))
+            )
+
+            Divider()
+
+            // ── With Label slots ──────────────────────────────────────────────
+            AppInputField(
+                text: $text3,
+                label: "Leading label",
+                placeholder: "0.00",
+                leadingLabel: AnyView(AppLabel(label: "USD", size: .md, type: .secondaryAction)),
+                leadingSeparator: true
+            )
+
+            AppInputField(
+                text: $text3,
+                label: "Trailing label",
+                placeholder: "Enter amount",
+                trailingLabel: AnyView(AppLabel(label: "kg", size: .md, type: .information)),
+                trailingSeparator: true
+            )
+
+            AppInputField(
+                text: $text3,
+                label: "Leading + Trailing labels",
+                placeholder: "0.00",
+                leadingLabel: AnyView(AppLabel(label: "From", size: .md, type: .secondaryAction)),
+                trailingLabel: AnyView(AppLabel(label: "USD", size: .md, type: .brandInteractive)),
+                leadingSeparator: true,
+                trailingSeparator: true
+            )
+
+            Divider()
+
+            // ── Multiline ─────────────────────────────────────────────────────
             AppTextField(text: $bio, label: "Bio", placeholder: "Tell us about yourself…")
+            AppTextField(text: .constant("Great content here."), label: "Bio (filled)", state: .success)
         }
         .padding(CGFloat.space4)
     }
