@@ -266,6 +266,7 @@ public struct AppTextField: View {
                 .font(INPUT_FONT)
                 .foregroundStyle(Color.typographyPrimary)
                 .tint(Color.surfacesBrandInteractive)
+                .scrollContentBackground(.hidden)  // Remove TextEditor's default background
                 .focused($isFocused)
                 .disabled(isDisabled)
                 .frame(minHeight: CGFloat(minLines) * 20 + CGFloat.space4)
