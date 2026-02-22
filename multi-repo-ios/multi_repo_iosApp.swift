@@ -9,6 +9,12 @@ import SwiftUI
 
 @main
 struct multi_repo_iosApp: App {
+
+    init() {
+        // Apply UITabBar appearance tokens before any TabView renders.
+        NativeBottomNavStyling.applyAppearance()
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()
