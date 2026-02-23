@@ -4,13 +4,19 @@
 // Axes: State(Default/Disabled/Focus/Filled/Success/Warning/Error) × Type(Default/TextField) = 11
 //
 // Figma primitive slots (left→right):
-//   [leadingLabel?] [leadingSeparator?] [text field] [trailingSeparator?] [trailingLabel?]
+//   [leadingLabel?] [leadingPicker?] [leadingSeparator?] [text field] [trailingSeparator?] [trailingPicker?] [trailingLabel?]
 //
 // Usage:
 //   AppInputField(text: $name, label: "Full Name", placeholder: "Enter your name")
 //   AppInputField(text: $email, label: "Email", state: .error, hint: "Invalid email address")
 //   AppInputField(text: $amount, label: "Amount", leadingLabel: AnyView(AppLabel(label: "USD")), leadingSeparator: true)
 //   AppTextField(text: $bio, label: "Bio", placeholder: "Tell us about yourself…")
+//
+//   // First-class picker slots (no AnyView wrapping required):
+//   AppInputField(text: $amount, label: "Amount",
+//       leadingPicker: .picker(label: "Currency", selection: $currency,
+//                              options: [("USD", "USD"), ("EUR", "EUR")]),
+//       leadingSeparator: true)
 
 import SwiftUI
 import PhosphorSwift
@@ -22,6 +28,31 @@ public enum AppInputFieldState {
     case success
     case warning
     case error
+}
+
+// MARK: - InputPickerConfig
+
+/// Type-erased picker configuration for AppInputField's leading/trailing picker slots.
+/// Use the static factory `.picker(label:selection:options:)` — it renders
+/// `AppNativePicker(embedded: true)` internally so the caller never touches AnyView.
+public struct InputPickerConfig {
+    let view: AnyView
+
+    /// Creates a picker config backed by an embedded AppNativePicker chip.
+    public static func picker<T: Hashable>(
+        label: String,
+        selection: Binding<T>,
+        options: [(label: String, value: T)]
+    ) -> InputPickerConfig {
+        InputPickerConfig(view: AnyView(
+            AppNativePicker(
+                label: label,
+                selection: selection,
+                options: options,
+                embedded: true
+            )
+        ))
+    }
 }
 
 // MARK: - State Spec
@@ -88,6 +119,8 @@ private let INPUT_V_PADDING: CGFloat = 14
 
 public struct AppInputField: View {
 
+    // MARK: - Properties
+
     @Binding var text: String
     let label: String?
     let placeholder: String
@@ -97,11 +130,15 @@ public struct AppInputField: View {
     let trailingIcon: AnyView?
     let leadingLabel: AnyView?
     let trailingLabel: AnyView?
+    let leadingPicker: InputPickerConfig?
+    let trailingPicker: InputPickerConfig?
     let leadingSeparator: Bool
     let trailingSeparator: Bool
     let isDisabled: Bool
 
     @FocusState private var isFocused: Bool
+
+    // MARK: - Init
 
     public init(
         text: Binding<String>,
@@ -113,6 +150,8 @@ public struct AppInputField: View {
         trailingIcon: AnyView? = nil,
         leadingLabel: AnyView? = nil,
         trailingLabel: AnyView? = nil,
+        leadingPicker: InputPickerConfig? = nil,
+        trailingPicker: InputPickerConfig? = nil,
         leadingSeparator: Bool = false,
         trailingSeparator: Bool = false,
         isDisabled: Bool = false
@@ -126,16 +165,30 @@ public struct AppInputField: View {
         self.trailingIcon = trailingIcon
         self.leadingLabel = leadingLabel
         self.trailingLabel = trailingLabel
+        self.leadingPicker = leadingPicker
+        self.trailingPicker = trailingPicker
         self.leadingSeparator = leadingSeparator
         self.trailingSeparator = trailingSeparator
         self.isDisabled = isDisabled
     }
+
+    // MARK: - Helpers
 
     private var spec: InputStateSpec { state.spec }
 
     private var currentBorderColor: Color {
         isFocused ? spec.focusBorderColor : spec.borderColor
     }
+
+    /// Icon color for leading/trailing icons:
+    /// - Default state: muted when empty+unfocused, primary when focused OR non-empty.
+    /// - Semantic states (success/warning/error): always use the state color unchanged.
+    private var activeIconColor: Color {
+        guard state == .default else { return spec.iconColor }
+        return (isFocused || !text.isEmpty) ? .iconsPrimary : .iconsMuted
+    }
+
+    // MARK: - Body
 
     public var body: some View {
         VStack(alignment: .leading, spacing: CGFloat.space1) {
@@ -149,21 +202,28 @@ public struct AppInputField: View {
             // ── Input row ────────────────────────────────────────────────────
             HStack(spacing: CGFloat.space2) {
 
-                // Leading label slot
+                // Leading label slot (AnyView)
                 if let leadingLabel {
                     leadingLabel
-                    if leadingSeparator {
-                        Divider()
-                            .frame(width: 1)
-                            .background(Color.appBorderDefault)
-                    }
+                }
+
+                // Leading picker slot (first-class, chip trigger only)
+                if let leadingPicker {
+                    leadingPicker.view
+                }
+
+                // Leading separator — shown when either leading slot is present
+                if leadingSeparator && (leadingLabel != nil || leadingPicker != nil) {
+                    Divider()
+                        .frame(width: 1)
+                        .background(Color.appBorderDefault)
                 }
 
                 // Leading simple icon
                 if let leadingIcon {
                     leadingIcon
                         .frame(width: CGFloat.iconSizeMd, height: CGFloat.iconSizeMd)
-                        .foregroundStyle(spec.iconColor)
+                        .foregroundStyle(activeIconColor)
                 }
 
                 // TextField — tint controls cursor + selection colour
@@ -179,19 +239,26 @@ public struct AppInputField: View {
                 if let trailingIcon {
                     trailingIcon
                         .frame(width: CGFloat.iconSizeMd, height: CGFloat.iconSizeMd)
-                        .foregroundStyle(spec.iconColor)
-                } else if trailingLabel == nil, let stateIcon = spec.stateIcon {
-                    // Auto state icon when no trailing icon/label
+                        .foregroundStyle(activeIconColor)
+                } else if trailingLabel == nil, trailingPicker == nil, let stateIcon = spec.stateIcon {
+                    // Auto state icon only when no trailing icon/label/picker
                     stateIcon
                 }
 
-                // Trailing label slot
+                // Trailing separator — shown when either trailing slot is present
+                if trailingSeparator && (trailingLabel != nil || trailingPicker != nil) {
+                    Divider()
+                        .frame(width: 1)
+                        .background(Color.appBorderDefault)
+                }
+
+                // Trailing picker slot (first-class, chip trigger only)
+                if let trailingPicker {
+                    trailingPicker.view
+                }
+
+                // Trailing label slot (AnyView)
                 if let trailingLabel {
-                    if trailingSeparator {
-                        Divider()
-                            .frame(width: 1)
-                            .background(Color.appBorderDefault)
-                    }
                     trailingLabel
                 }
             }
@@ -205,6 +272,12 @@ public struct AppInputField: View {
             )
             .opacity(isDisabled ? 0.5 : 1.0)
             .animation(.easeOut(duration: 0.15), value: isFocused)
+            // Haptic feedback when the field gains focus
+            .onChange(of: isFocused) { _, focused in
+                guard focused else { return }
+                let generator = UIImpactFeedbackGenerator(style: .light)
+                generator.impactOccurred()
+            }
 
             // ── Hint ─────────────────────────────────────────────────────────
             if let hint {
@@ -297,6 +370,9 @@ public struct AppTextField: View {
     @Previewable @State var text2 = "user@example.com"
     @Previewable @State var text3 = ""
     @Previewable @State var bio = ""
+    @Previewable @State var currency = "USD"
+    @Previewable @State var amount = ""
+    @Previewable @State var unit = "kg"
 
     ScrollView {
         VStack(spacing: CGFloat.space4) {
@@ -323,6 +399,33 @@ public struct AppTextField: View {
                 label: "With trailing icon",
                 placeholder: "Password",
                 trailingIcon: AnyView(Ph.eye.regular.iconSize(.md))
+            )
+
+            Divider()
+
+            // ── First-class picker slots ───────────────────────────────────────
+            AppInputField(
+                text: $amount,
+                label: "Leading picker (currency)",
+                placeholder: "0.00",
+                leadingPicker: .picker(
+                    label: "Currency",
+                    selection: $currency,
+                    options: [("USD", "USD"), ("EUR", "EUR"), ("GBP", "GBP")]
+                ),
+                leadingSeparator: true
+            )
+
+            AppInputField(
+                text: $amount,
+                label: "Trailing picker (unit)",
+                placeholder: "Enter weight",
+                trailingPicker: .picker(
+                    label: "Unit",
+                    selection: $unit,
+                    options: [("kg", "kg"), ("lb", "lb")]
+                ),
+                trailingSeparator: true
             )
 
             Divider()

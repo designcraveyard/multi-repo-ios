@@ -61,6 +61,14 @@ public struct AppRangeSlider: View {
 
     private enum ActiveThumb { case lower, upper }
 
+    // MARK: - Continuous Haptic Tracking
+    // In step mode, haptics fire on each discrete step — see DragGesture handler below.
+    // In continuous mode (step=0), we fire UISelectionFeedbackGenerator every time
+    // either thumb crosses a 1%-of-range threshold, matching the "drumroll" feel of
+    // iOS drum-roll / time pickers. Reset to current value on each new touch-down.
+    @State private var lastHapticLower: Double = 0
+    @State private var lastHapticUpper: Double = 0
+
     // MARK: - Haptics
 
     /// Light impact fired when a thumb is first grabbed.
@@ -115,24 +123,38 @@ public struct AppRangeSlider: View {
                                 : rawValue
                             let clamped = min(max(snapped, range.lowerBound), range.upperBound)
 
-                            // On first touch, select the nearest thumb + impact haptic
+                            // On first touch, select the nearest thumb + impact haptic.
+                            // Also snapshot current values for continuous haptic tracking.
                             if activeThumb == nil {
                                 let dLower = abs(clamped - lowerValue)
                                 let dUpper = abs(clamped - upperValue)
                                 activeThumb = dLower <= dUpper ? .lower : .upper
                                 impactFeedback.impactOccurred()
+                                lastHapticLower = lowerValue
+                                lastHapticUpper = upperValue
                             }
 
                             // Update only the active thumb, respecting minDistance.
-                            // Fire a selection haptic on each discrete step change.
+                            // Step mode: fire a selection tick on each discrete change.
+                            // Continuous mode (step=0): fire a selection tick every 1% of range.
                             switch activeThumb {
                             case .lower:
                                 let newValue = min(clamped, upperValue - minDistance)
-                                if step > 0 && newValue != lowerValue { selectionFeedback.selectionChanged() }
+                                if step > 0 {
+                                    if newValue != lowerValue { selectionFeedback.selectionChanged() }
+                                } else if abs(newValue - lastHapticLower) >= rangeSpan * 0.01 {
+                                    selectionFeedback.selectionChanged()
+                                    lastHapticLower = newValue
+                                }
                                 lowerValue = newValue
                             case .upper:
                                 let newValue = max(clamped, lowerValue + minDistance)
-                                if step > 0 && newValue != upperValue { selectionFeedback.selectionChanged() }
+                                if step > 0 {
+                                    if newValue != upperValue { selectionFeedback.selectionChanged() }
+                                } else if abs(newValue - lastHapticUpper) >= rangeSpan * 0.01 {
+                                    selectionFeedback.selectionChanged()
+                                    lastHapticUpper = newValue
+                                }
                                 upperValue = newValue
                             case .none:
                                 break

@@ -83,6 +83,11 @@ public struct AppCarousel<Item: Identifiable, Content: View>: View {
                 AppCarouselDots(count: items.count, currentPage: $currentPage)
             }
         }
+        // Haptic feedback on every page change (swipe or dot tap)
+        .onChange(of: currentPage) { _, _ in
+            let generator = UIImpactFeedbackGenerator(style: .light)
+            generator.impactOccurred()
+        }
     }
 }
 

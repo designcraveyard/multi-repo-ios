@@ -1,0 +1,560 @@
+// MarkdownTextStorage.swift
+// Custom NSTextStorage that applies inline markdown formatting as the user types.
+//
+// Architecture:
+//   1. Stores raw text in a backing NSMutableAttributedString
+//   2. On each edit, classifies every line into a BlockType
+//   3. Applies visual attributes (font, color, paragraph style)
+//   4. Hides markdown syntax by making markers invisible (near-zero-width + clear color)
+//   5. Custom MarkdownLayoutManager draws bullet dots and SF Symbol checkboxes
+//      on top of invisible marker characters
+
+import UIKit
+
+// MARK: - Block Type
+
+enum MarkdownBlockType: Equatable {
+    case paragraph
+    case heading(level: Int)
+    case bulletList(indent: Int)
+    case orderedList(indent: Int, number: Int)
+    case taskList(indent: Int, checked: Bool)
+    case blockquote(depth: Int)
+    case codeFenceOpen
+    case codeBlock
+    case codeFenceClose
+    case horizontalRule
+    case tableRow
+    case tableSeparator
+}
+
+// MARK: - MarkdownTextStorage
+
+class MarkdownTextStorage: NSTextStorage {
+
+    // --- Constants ---
+
+    /// Attributes that collapse syntax characters to near-zero width and make them invisible.
+    private static let hiddenAttrs: [NSAttributedString.Key: Any] = [
+        .font: UIFont.systemFont(ofSize: 0.01),
+        .foregroundColor: UIColor.clear,
+    ]
+
+    /// Attributes that make characters invisible but KEEP their width
+    /// so MarkdownLayoutManager can draw replacements (bullets, checkboxes) on top.
+    private static let invisibleAttrs: [NSAttributedString.Key: Any] = [
+        .foregroundColor: UIColor.clear,
+    ]
+
+    // --- Backing store ---
+    private let backing = NSMutableAttributedString()
+
+    // --- State ---
+    private(set) var lineBlocks: [(range: NSRange, block: MarkdownBlockType)] = []
+
+    // MARK: - NSTextStorage required overrides
+
+    override var string: String { backing.string }
+
+    override func attributes(at location: Int, effectiveRange range: NSRangePointer?) -> [NSAttributedString.Key: Any] {
+        backing.attributes(at: location, effectiveRange: range)
+    }
+
+    override func replaceCharacters(in range: NSRange, with str: String) {
+        beginEditing()
+        backing.replaceCharacters(in: range, with: str)
+        edited(.editedCharacters, range: range, changeInLength: str.count - range.length)
+        endEditing()
+    }
+
+    override func setAttributes(_ attrs: [NSAttributedString.Key: Any]?, range: NSRange) {
+        beginEditing()
+        backing.setAttributes(attrs, range: range)
+        edited(.editedAttributes, range: range, changeInLength: 0)
+        endEditing()
+    }
+
+    // MARK: - Process Editing
+
+    override func processEditing() {
+        applyMarkdownFormatting()
+        super.processEditing()
+    }
+
+    // MARK: - Full Formatting Pass
+
+    func applyMarkdownFormatting() {
+        let fullRange = NSRange(location: 0, length: length)
+        guard fullRange.length > 0 else { return }
+
+        // Reset to default body style
+        let defaultAttrs: [NSAttributedString.Key: Any] = [
+            .font: MarkdownFonts.body,
+            .foregroundColor: MarkdownColors.text,
+            .paragraphStyle: defaultParagraphStyle(),
+        ]
+        backing.setAttributes(defaultAttrs, range: fullRange)
+
+        // Classify lines
+        lineBlocks = classifyLines()
+
+        // Apply block-level formatting
+        for (i, entry) in lineBlocks.enumerated() {
+            applyBlockStyle(range: entry.range, block: entry.block, index: i)
+        }
+
+        // Apply inline formatting (outside code blocks)
+        applyInlineFormatting()
+    }
+
+    // MARK: - Line Classification
+
+    private func classifyLines() -> [(range: NSRange, block: MarkdownBlockType)] {
+        var results: [(range: NSRange, block: MarkdownBlockType)] = []
+        let nsString = backing.string as NSString
+        var inCode = false
+
+        nsString.enumerateSubstrings(in: NSRange(location: 0, length: nsString.length), options: [.byLines, .substringNotRequired]) { _, lineRange, _, _ in
+            let line = nsString.substring(with: lineRange)
+            // Strip leading whitespace only — preserve trailing spaces for trigger detection
+            let stripped = String(line.drop(while: { $0 == " " || $0 == "\t" }))
+
+            // Code fence toggle
+            if stripped.hasPrefix("```") {
+                if inCode {
+                    results.append((lineRange, .codeFenceClose))
+                    inCode = false
+                } else {
+                    results.append((lineRange, .codeFenceOpen))
+                    inCode = true
+                }
+                return
+            }
+
+            if inCode {
+                results.append((lineRange, .codeBlock))
+                return
+            }
+
+            // Horizontal rule
+            if Self.isHorizontalRule(stripped) {
+                results.append((lineRange, .horizontalRule))
+                return
+            }
+
+            // Heading
+            if let level = Self.headingLevel(stripped) {
+                results.append((lineRange, .heading(level: level)))
+                return
+            }
+
+            // Indent level from the original line (counts leading spaces)
+            let indent = Self.indentLevel(line)
+
+            // Task list (before bullet, since task starts with "- [")
+            if let checked = Self.taskListMatch(stripped) {
+                results.append((lineRange, .taskList(indent: indent, checked: checked)))
+                return
+            }
+
+            // Bullet list
+            if Self.isBulletList(stripped) {
+                results.append((lineRange, .bulletList(indent: indent)))
+                return
+            }
+
+            // Ordered list
+            if let number = Self.orderedListNumber(stripped) {
+                results.append((lineRange, .orderedList(indent: indent, number: number)))
+                return
+            }
+
+            // Blockquote
+            if let depth = Self.blockquoteDepth(stripped) {
+                results.append((lineRange, .blockquote(depth: depth)))
+                return
+            }
+
+            // Table row or separator
+            if stripped.hasPrefix("|") && stripped.hasSuffix("|") {
+                let inner = stripped.dropFirst().dropLast()
+                let isSep = inner.allSatisfy { "- |:".contains($0) } && inner.contains("-")
+                results.append((lineRange, isSep ? .tableSeparator : .tableRow))
+                return
+            }
+
+            results.append((lineRange, .paragraph))
+        }
+
+        return results
+    }
+
+    // MARK: - Pattern Matching Helpers
+
+    private static func headingLevel(_ stripped: String) -> Int? {
+        var count = 0
+        for ch in stripped {
+            if ch == "#" { count += 1 } else { break }
+        }
+        guard count >= 1, count <= 6 else { return nil }
+        if stripped.count == count { return count }
+        guard stripped[stripped.index(stripped.startIndex, offsetBy: count)] == " " else { return nil }
+        return count
+    }
+
+    private static func indentLevel(_ line: String) -> Int {
+        var spaces = 0
+        for ch in line {
+            if ch == " " { spaces += 1 }
+            else if ch == "\t" { spaces += 4 }
+            else { break }
+        }
+        return spaces / 2
+    }
+
+    private static func isBulletList(_ stripped: String) -> Bool {
+        stripped.hasPrefix("- ") || stripped.hasPrefix("* ") || stripped.hasPrefix("+ ")
+    }
+
+    private static func orderedListNumber(_ stripped: String) -> Int? {
+        guard let dotIndex = stripped.firstIndex(of: ".") else { return nil }
+        let prefix = stripped[stripped.startIndex..<dotIndex]
+        guard let num = Int(prefix), num > 0 else { return nil }
+        let afterDot = stripped.index(after: dotIndex)
+        guard afterDot < stripped.endIndex, stripped[afterDot] == " " else { return nil }
+        return num
+    }
+
+    private static func taskListMatch(_ stripped: String) -> Bool? {
+        if stripped.hasPrefix("- [ ] ") || stripped.hasPrefix("* [ ] ") ||
+           stripped == "- [ ]" || stripped == "* [ ]" { return false }
+        if stripped.hasPrefix("- [x] ") || stripped.hasPrefix("- [X] ") ||
+           stripped.hasPrefix("* [x] ") || stripped.hasPrefix("* [X] ") ||
+           stripped == "- [x]" || stripped == "- [X]" ||
+           stripped == "* [x]" || stripped == "* [X]" { return true }
+        return nil
+    }
+
+    private static func blockquoteDepth(_ stripped: String) -> Int? {
+        var depth = 0
+        var s = stripped[...]
+        while s.hasPrefix("> ") || s.hasPrefix(">") {
+            depth += 1
+            s = s.dropFirst(s.hasPrefix("> ") ? 2 : 1)
+        }
+        return depth > 0 ? depth : nil
+    }
+
+    private static func isHorizontalRule(_ stripped: String) -> Bool {
+        let clean = stripped.replacingOccurrences(of: " ", with: "")
+        return (clean == "---" || clean == "***" || clean == "___") && stripped.count >= 3
+    }
+
+    // MARK: - Block Style Application
+
+    private func applyBlockStyle(range: NSRange, block: MarkdownBlockType, index: Int) {
+        guard range.length > 0 else { return }
+        let line = (backing.string as NSString).substring(with: range)
+        let leadingSpaces = line.prefix(while: { $0 == " " || $0 == "\t" }).count
+
+        switch block {
+        case .heading(let level):
+            let font = headingFont(level: level)
+            let para = NSMutableParagraphStyle()
+            para.paragraphSpacingBefore = MarkdownLayout.headingSpacingBefore
+            para.paragraphSpacing = MarkdownLayout.headingSpacingAfter
+
+            backing.addAttributes([
+                .font: font,
+                .foregroundColor: MarkdownColors.text,
+                .paragraphStyle: para,
+            ], range: range)
+
+            let prefixLen = Self.headingPrefixLength(line)
+            if prefixLen > 0 && prefixLen < range.length {
+                backing.addAttributes(Self.hiddenAttrs, range: NSRange(location: range.location, length: prefixLen))
+            } else if prefixLen > 0 {
+                backing.addAttribute(.foregroundColor, value: MarkdownColors.textMuted, range: NSRange(location: range.location, length: prefixLen))
+            }
+
+        case .bulletList(let indent):
+            let para = listParagraphStyle(indent: indent)
+            backing.addAttribute(.paragraphStyle, value: para, range: range)
+
+            // Make the dash/marker invisible — MarkdownLayoutManager draws "•" on top
+            let prefixLen = leadingSpaces + 2 // "- " or "* " or "+ "
+            if prefixLen <= range.length {
+                backing.addAttributes(Self.invisibleAttrs, range: NSRange(location: range.location, length: prefixLen))
+            }
+
+        case .orderedList(let indent, let num):
+            let para = listParagraphStyle(indent: indent)
+            backing.addAttribute(.paragraphStyle, value: para, range: range)
+
+            // Number prefix in primary text color (not muted)
+            let prefixLen = leadingSpaces + String(num).count + 2 // "1. "
+            if prefixLen <= range.length {
+                backing.addAttribute(.foregroundColor, value: MarkdownColors.text, range: NSRange(location: range.location, length: prefixLen))
+            }
+
+        case .taskList(let indent, let checked):
+            let para = listParagraphStyle(indent: indent)
+            backing.addAttribute(.paragraphStyle, value: para, range: range)
+
+            // Make "- " prefix invisible
+            let dashLen = leadingSpaces + 2
+            if dashLen <= range.length {
+                backing.addAttributes(Self.invisibleAttrs, range: NSRange(location: range.location, length: dashLen))
+            }
+
+            // Make "[ ]" or "[x]" invisible — MarkdownLayoutManager draws SF Symbol on top
+            let cbStart = range.location + dashLen
+            let cbLen = 3
+            if cbStart + cbLen <= NSMaxRange(range) {
+                backing.addAttributes(Self.invisibleAttrs, range: NSRange(location: cbStart, length: cbLen))
+            }
+
+            // Hide the space after checkbox
+            let spaceAfterCB = cbStart + cbLen
+            if spaceAfterCB < NSMaxRange(range) {
+                backing.addAttributes(Self.hiddenAttrs, range: NSRange(location: spaceAfterCB, length: 1))
+            }
+
+            // Strikethrough + muted for checked task content
+            if checked {
+                let contentStart = dashLen + cbLen + 1
+                if contentStart < range.length {
+                    let contentRange = NSRange(location: range.location + contentStart, length: range.length - contentStart)
+                    backing.addAttributes([
+                        .strikethroughStyle: NSUnderlineStyle.single.rawValue,
+                        .foregroundColor: MarkdownColors.textMuted,
+                    ], range: contentRange)
+                }
+            }
+
+        case .blockquote(let depth):
+            let para = NSMutableParagraphStyle()
+            let indent = CGFloat(depth) * MarkdownLayout.blockquoteIndent + 8
+            para.firstLineHeadIndent = indent
+            para.headIndent = indent
+            para.paragraphSpacing = MarkdownLayout.paragraphSpacing
+
+            backing.addAttributes([
+                .foregroundColor: MarkdownColors.blockquoteText,
+                .font: MarkdownFonts.bodyItalic,
+                .paragraphStyle: para,
+                .backgroundColor: MarkdownColors.blockquoteBackground,
+            ], range: range)
+
+            // Hide the "> " prefix
+            var prefixLen = 0
+            for ch in line {
+                if ch == ">" || ch == " " { prefixLen += 1 } else { break }
+            }
+            if prefixLen > 0 && prefixLen < range.length {
+                backing.addAttributes(Self.hiddenAttrs, range: NSRange(location: range.location, length: prefixLen))
+            } else if prefixLen > 0 {
+                backing.addAttribute(.foregroundColor, value: MarkdownColors.textMuted, range: NSRange(location: range.location, length: prefixLen))
+            }
+
+        case .codeFenceOpen, .codeFenceClose:
+            backing.addAttributes([
+                .font: MarkdownFonts.codeBlock,
+                .foregroundColor: MarkdownColors.textMuted,
+                .backgroundColor: MarkdownColors.codeBackground,
+            ], range: range)
+
+        case .codeBlock:
+            backing.addAttributes([
+                .font: MarkdownFonts.codeBlock,
+                .foregroundColor: MarkdownColors.codeText,
+                .backgroundColor: MarkdownColors.codeBackground,
+            ], range: range)
+
+        case .horizontalRule:
+            backing.addAttributes([
+                .foregroundColor: MarkdownColors.horizontalRule,
+                .strikethroughStyle: NSUnderlineStyle.single.rawValue,
+                .strikethroughColor: MarkdownColors.horizontalRule,
+            ], range: range)
+
+        case .tableRow:
+            // Detect header row: first tableRow before a tableSeparator
+            let isHeader = index + 1 < lineBlocks.count && lineBlocks[index + 1].block == .tableSeparator
+            let font = isHeader ? MarkdownFonts.bodyBold : MarkdownFonts.body
+
+            backing.addAttribute(.font, value: font, range: range)
+
+            if isHeader {
+                backing.addAttribute(.backgroundColor, value: MarkdownColors.tableHeaderBackground, range: range)
+            }
+
+            // Style pipe characters
+            for (i, ch) in line.enumerated() where ch == "|" {
+                backing.addAttribute(.foregroundColor, value: MarkdownColors.tableBorder, range: NSRange(location: range.location + i, length: 1))
+            }
+
+        case .tableSeparator:
+            // Make separator row small and subtle
+            backing.addAttributes([
+                .font: UIFont.systemFont(ofSize: 6),
+                .foregroundColor: MarkdownColors.tableBorder.withAlphaComponent(0.3),
+            ], range: range)
+
+        case .paragraph:
+            break
+        }
+    }
+
+    private static func headingPrefixLength(_ line: String) -> Int {
+        let leadingSpaces = line.prefix(while: { $0 == " " || $0 == "\t" }).count
+        let afterSpaces = line.dropFirst(leadingSpaces)
+        var hashCount = 0
+        for ch in afterSpaces {
+            if ch == "#" { hashCount += 1 } else { break }
+        }
+        guard hashCount >= 1, hashCount <= 6 else { return 0 }
+        let total = leadingSpaces + hashCount
+        if afterSpaces.count > hashCount {
+            let charAfterHash = afterSpaces[afterSpaces.index(afterSpaces.startIndex, offsetBy: hashCount)]
+            if charAfterHash == " " { return total + 1 }
+        }
+        return total
+    }
+
+    // MARK: - Inline Formatting
+
+    private func applyInlineFormatting() {
+        let text = backing.string
+        let nsText = text as NSString
+
+        // Determine code block ranges to skip inline formatting
+        var codeRanges: [NSRange] = []
+        var inCode = false
+        var codeStart = 0
+        for (range, block) in lineBlocks {
+            switch block {
+            case .codeFenceOpen:
+                inCode = true
+                codeStart = range.location
+            case .codeFenceClose:
+                inCode = false
+                codeRanges.append(NSRange(location: codeStart, length: NSMaxRange(range) - codeStart))
+            default:
+                break
+            }
+        }
+
+        func isInCodeBlock(_ range: NSRange) -> Bool {
+            codeRanges.contains { NSIntersectionRange($0, range).length > 0 }
+        }
+
+        // Bold: **text** or __text__
+        applyInlineHidden(nsText: nsText, pattern: "\\*\\*(.+?)\\*\\*", markerLen: 2, isInCodeBlock: isInCodeBlock) { contentRange in
+            self.backing.addAttribute(.font, value: MarkdownFonts.bodyBold, range: contentRange)
+        }
+        applyInlineHidden(nsText: nsText, pattern: "__(.+?)__", markerLen: 2, isInCodeBlock: isInCodeBlock) { contentRange in
+            self.backing.addAttribute(.font, value: MarkdownFonts.bodyBold, range: contentRange)
+        }
+
+        // Italic: *text* or _text_ (not bold)
+        applyInlineHidden(nsText: nsText, pattern: "(?<!\\*)\\*(?!\\*)(.+?)(?<!\\*)\\*(?!\\*)", markerLen: 1, isInCodeBlock: isInCodeBlock) { contentRange in
+            self.backing.addAttribute(.font, value: MarkdownFonts.bodyItalic, range: contentRange)
+        }
+        applyInlineHidden(nsText: nsText, pattern: "(?<!_)_(?!_)(.+?)(?<!_)_(?!_)", markerLen: 1, isInCodeBlock: isInCodeBlock) { contentRange in
+            self.backing.addAttribute(.font, value: MarkdownFonts.bodyItalic, range: contentRange)
+        }
+
+        // Strikethrough: ~~text~~
+        applyInlineHidden(nsText: nsText, pattern: "~~(.+?)~~", markerLen: 2, isInCodeBlock: isInCodeBlock) { contentRange in
+            self.backing.addAttributes([
+                .strikethroughStyle: NSUnderlineStyle.single.rawValue,
+                .foregroundColor: MarkdownColors.strikethrough,
+            ], range: contentRange)
+        }
+
+        // Inline code: `code`
+        applyInlineHidden(nsText: nsText, pattern: "`([^`]+)`", markerLen: 1, isInCodeBlock: isInCodeBlock) { contentRange in
+            self.backing.addAttributes([
+                .font: MarkdownFonts.code,
+                .foregroundColor: MarkdownColors.codeText,
+                .backgroundColor: MarkdownColors.codeBackground,
+            ], range: contentRange)
+        }
+
+        // Links: [text](url)
+        if let regex = try? NSRegularExpression(pattern: "\\[([^\\]]+)\\]\\(([^)]+)\\)") {
+            let matches = regex.matches(in: text, range: NSRange(location: 0, length: nsText.length))
+            for match in matches {
+                let fullRange = match.range
+                guard !isInCodeBlock(fullRange) else { continue }
+
+                let textRange = match.range(at: 1)
+                backing.addAttributes(Self.hiddenAttrs, range: NSRange(location: fullRange.location, length: 1))
+                backing.addAttributes([
+                    .foregroundColor: MarkdownColors.link,
+                    .underlineStyle: NSUnderlineStyle.single.rawValue,
+                ], range: textRange)
+
+                let closingStart = NSMaxRange(textRange)
+                let closingLen = NSMaxRange(fullRange) - closingStart
+                if closingLen > 0 {
+                    backing.addAttributes(Self.hiddenAttrs, range: NSRange(location: closingStart, length: closingLen))
+                }
+            }
+        }
+    }
+
+    private func applyInlineHidden(nsText: NSString, pattern: String, markerLen: Int, isInCodeBlock: (NSRange) -> Bool, apply: (NSRange) -> Void) {
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return }
+        let matches = regex.matches(in: nsText as String, range: NSRange(location: 0, length: nsText.length))
+        for match in matches {
+            let fullRange = match.range
+            guard !isInCodeBlock(fullRange) else { continue }
+
+            let contentRange = match.range(at: 1)
+            guard contentRange.location != NSNotFound, contentRange.length > 0 else { continue }
+
+            let openRange = NSRange(location: fullRange.location, length: markerLen)
+            backing.addAttributes(Self.hiddenAttrs, range: openRange)
+
+            apply(contentRange)
+
+            let closeStart = NSMaxRange(contentRange)
+            let closeLen = NSMaxRange(fullRange) - closeStart
+            if closeLen > 0 {
+                backing.addAttributes(Self.hiddenAttrs, range: NSRange(location: closeStart, length: closeLen))
+            }
+        }
+    }
+
+    // MARK: - Paragraph Style Helpers
+
+    private func defaultParagraphStyle() -> NSMutableParagraphStyle {
+        let para = NSMutableParagraphStyle()
+        para.paragraphSpacing = MarkdownLayout.paragraphSpacing
+        para.lineSpacing = 2
+        return para
+    }
+
+    private func listParagraphStyle(indent: Int) -> NSMutableParagraphStyle {
+        let para = NSMutableParagraphStyle()
+        let indentPt = CGFloat(indent + 1) * MarkdownLayout.listIndentPerLevel
+        para.firstLineHeadIndent = indentPt - MarkdownLayout.listIndentPerLevel
+        para.headIndent = indentPt
+        para.paragraphSpacing = 2
+        para.tabStops = [NSTextTab(textAlignment: .left, location: indentPt)]
+        return para
+    }
+
+    private func headingFont(level: Int) -> UIFont {
+        switch level {
+        case 1: return MarkdownFonts.h1
+        case 2: return MarkdownFonts.h2
+        case 3: return MarkdownFonts.h3
+        case 4: return MarkdownFonts.h4
+        case 5: return MarkdownFonts.h5
+        default: return MarkdownFonts.h6
+        }
+    }
+}

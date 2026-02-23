@@ -109,6 +109,11 @@ public struct AppDateTimePicker: View {
                 }
             }
         }
+        .onChange(of: selection) { _, _ in
+            // Haptic feedback when the selected date/time changes
+            let generator = UIImpactFeedbackGenerator(style: .light)
+            generator.impactOccurred()
+        }
     }
 
     // MARK: - Helpers

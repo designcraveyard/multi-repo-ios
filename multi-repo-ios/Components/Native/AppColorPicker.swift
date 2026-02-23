@@ -36,6 +36,10 @@ public struct AppColorPicker: View {
             .font(NativeColorPickerStyling.Typography.label)
             .foregroundStyle(NativeColorPickerStyling.Colors.label)
             .tint(NativeColorPickerStyling.Colors.tint)
+            .onChange(of: selection) { _, _ in
+                let generator = UIImpactFeedbackGenerator(style: .light)
+                generator.impactOccurred()
+            }
     }
 }
 

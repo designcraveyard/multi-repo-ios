@@ -107,16 +107,47 @@ struct ContentView: View {
     // BottomNavBar
     @State private var selectedTab = 0
 
+    // Markdown Editor
+    @State private var editorMarkdown = """
+    ## Welcome to the Markdown Editor
+
+    This is a **real-time inline** WYSIWYG editor. Everything you type renders *in-place*.
+
+    ### Features
+
+    - **Bold**, *italic*, and ~~strikethrough~~ text
+    - Inline `code` snippets
+
+    ### Lists
+
+    - Bullet lists with nesting
+      - Second level
+        - Third level
+
+    1. Numbered lists
+    2. With automatic numbering
+
+    - [ ] Task lists
+    - [x] With checkboxes
+
+    > This is a blockquote.
+
+    ---
+    """
+    @State private var editorMarkdown2 = ""
+
     var body: some View {
         AdaptiveNavShell(
             selectedTab: $selectedTab,
             tabs: [
                 AppNavTab(id: 0, label: "Components", icon: "square.grid.2x2"),
-                AppNavTab(id: 1, label: "Explore",    icon: "safari"),
-                AppNavTab(id: 2, label: "Settings",   icon: "gearshape"),
+                AppNavTab(id: 1, label: "Editor",     icon: "doc.richtext"),
+                AppNavTab(id: 2, label: "Explore",    icon: "safari"),
+                AppNavTab(id: 3, label: "Settings",   icon: "gearshape"),
             ]
         ) {
             showcaseTab
+            editorTab
             exploreTab
             settingsTab
         }
@@ -1415,6 +1446,55 @@ struct ContentView: View {
                 withAnimation { showToast = false }
             })
         }
+    }
+
+    // MARK: - Editor Tab
+
+    private var editorTab: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: .space6) {
+                // Pre-filled editor
+                ShowcaseSection(title: "Pre-filled Editor") {
+                    AppMarkdownEditor(
+                        text: $editorMarkdown,
+                        label: "Notes",
+                        placeholder: "Start typing markdown…",
+                        hint: "Try editing — all markdown syntax is supported.",
+                        minHeight: 300
+                    )
+                }
+
+                AppDivider(type: .section)
+
+                // Empty editor
+                ShowcaseSection(title: "Empty Editor") {
+                    AppMarkdownEditor(
+                        text: $editorMarkdown2,
+                        label: "Description",
+                        placeholder: "Try ## Heading, - list item, **bold**, or ```code```",
+                        minHeight: 200
+                    )
+                }
+
+                AppDivider(type: .section)
+
+                // Raw output
+                ShowcaseSection(title: "Raw Markdown Output") {
+                    Text(editorMarkdown.isEmpty ? "(empty)" : editorMarkdown)
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(Color.typographySecondary)
+                        .padding(.space3)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.surfacesBaseLowContrast)
+                        .clipShape(RoundedRectangle(cornerRadius: .radiusMD))
+                }
+            }
+            .padding(.horizontal, .space4)
+            .padding(.vertical, .space6)
+        }
+        .background(Color.surfacesBasePrimary)
+        .navigationTitle("Editor")
+        .navigationBarTitleDisplayMode(.large)
     }
 
     // MARK: - Explore Tab
