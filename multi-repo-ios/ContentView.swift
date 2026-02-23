@@ -90,9 +90,8 @@ struct ContentView: View {
     @State private var selectedTab = 0
 
     var body: some View {
-        AppBottomNavBar(
+        AdaptiveNavShell(
             selectedTab: $selectedTab,
-            style: .iconLabel,
             tabs: [
                 AppNavTab(id: 0, label: "Components", icon: "square.grid.2x2"),
                 AppNavTab(id: 1, label: "Explore",    icon: "safari"),
@@ -108,8 +107,7 @@ struct ContentView: View {
     // MARK: - Showcase Tab
 
     private var showcaseTab: some View {
-        NavigationStack {
-            ScrollView {
+        ScrollView {
                 VStack(alignment: .leading, spacing: 40) {
 
                     // ── Button: Variants ──────────────────────────────────
@@ -1170,10 +1168,10 @@ struct ContentView: View {
                     // ── Bottom Nav Bar (note) ────────────────────────────
                     ShowcaseSection(title: "BottomNavBar") {
                         VStack(alignment: .leading, spacing: .space2) {
-                            Text("✅ AppBottomNavBar is live — this page is wrapped in it. Switch between the Components, Explore, and Settings tabs below.")
+                            Text("✅ AdaptiveNavShell is live — this page uses it. On iPhone: bottom tabs. On iPad landscape: collapsible sidebar.")
                                 .font(.appBodySmall)
                                 .foregroundStyle(Color.typographySecondary)
-                            Text("Uses NativeBottomNavStyling for appearance. See AppBottomNavBar.swift.")
+                            Text("Uses AdaptiveNavShell.swift. Compact = TabView, Regular = icon-rail sidebar.")
                                 .font(.appCaptionSmall)
                                 .foregroundStyle(Color.typographyMuted)
                         }
@@ -1231,7 +1229,6 @@ struct ContentView: View {
                     }
                 }
             }
-        }
         .toastOverlay(isPresented: $showToast) {
             AppToast(message: toastMessage, dismissible: true, onDismiss: {
                 withAnimation { showToast = false }
@@ -1242,57 +1239,53 @@ struct ContentView: View {
     // MARK: - Explore Tab
 
     private var exploreTab: some View {
-        NavigationStack {
-            VStack(spacing: .space4) {
-                Spacer()
-                Ph.compass.regular
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 48, height: 48)
-                    .foregroundStyle(Color.typographyMuted)
-                Text("Explore")
-                    .font(.appTitleSmall)
-                    .foregroundStyle(Color.typographyPrimary)
-                Text("This tab demonstrates AppBottomNavBar.\nSwitch between tabs below.")
-                    .font(.appBodySmall)
-                    .foregroundStyle(Color.typographySecondary)
-                    .multilineTextAlignment(.center)
-                Spacer()
-            }
-            .padding(.horizontal, .space4)
-            .frame(maxWidth: .infinity)
-            .background(Color.surfacesBasePrimary)
-            .navigationTitle("Explore")
-            .navigationBarTitleDisplayMode(.large)
+        VStack(spacing: .space4) {
+            Spacer()
+            Ph.compass.regular
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 48, height: 48)
+                .foregroundStyle(Color.typographyMuted)
+            Text("Explore")
+                .font(.appTitleSmall)
+                .foregroundStyle(Color.typographyPrimary)
+            Text("This tab demonstrates AdaptiveNavShell.\nSwitch between tabs below.")
+                .font(.appBodySmall)
+                .foregroundStyle(Color.typographySecondary)
+                .multilineTextAlignment(.center)
+            Spacer()
         }
+        .padding(.horizontal, .space4)
+        .frame(maxWidth: .infinity)
+        .background(Color.surfacesBasePrimary)
+        .navigationTitle("Explore")
+        .navigationBarTitleDisplayMode(.large)
     }
 
     // MARK: - Settings Tab
 
     private var settingsTab: some View {
-        NavigationStack {
-            VStack(spacing: .space4) {
-                Spacer()
-                Ph.gear.regular
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 48, height: 48)
-                    .foregroundStyle(Color.typographyMuted)
-                Text("Settings")
-                    .font(.appTitleSmall)
-                    .foregroundStyle(Color.typographyPrimary)
-                Text("Another tab for AppBottomNavBar demo.")
-                    .font(.appBodySmall)
-                    .foregroundStyle(Color.typographySecondary)
-                    .multilineTextAlignment(.center)
-                Spacer()
-            }
-            .padding(.horizontal, .space4)
-            .frame(maxWidth: .infinity)
-            .background(Color.surfacesBasePrimary)
-            .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.large)
+        VStack(spacing: .space4) {
+            Spacer()
+            Ph.gear.regular
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 48, height: 48)
+                .foregroundStyle(Color.typographyMuted)
+            Text("Settings")
+                .font(.appTitleSmall)
+                .foregroundStyle(Color.typographyPrimary)
+            Text("Another tab for AdaptiveNavShell demo.")
+                .font(.appBodySmall)
+                .foregroundStyle(Color.typographySecondary)
+                .multilineTextAlignment(.center)
+            Spacer()
         }
+        .padding(.horizontal, .space4)
+        .frame(maxWidth: .infinity)
+        .background(Color.surfacesBasePrimary)
+        .navigationTitle("Settings")
+        .navigationBarTitleDisplayMode(.large)
     }
 
     // MARK: - Sheet List Icon Helper
