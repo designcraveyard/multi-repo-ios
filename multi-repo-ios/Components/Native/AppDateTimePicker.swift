@@ -91,15 +91,22 @@ public struct AppDateTimePicker: View {
                 )
 
             case .wheel:
-                DatePicker(
-                    label,
-                    selection: $selection,
-                    in: dateRange,
-                    displayedComponents: displayedComponents
-                )
-                .datePickerStyle(.wheel)
-                .tint(NativeDatePickerStyling.Colors.tint)
-                .foregroundStyle(NativeDatePickerStyling.Colors.label)
+                // Show the label above the wheel so it doesn't compete for horizontal width
+                // with the drum columns, preventing it from wrapping to two lines.
+                VStack(alignment: .leading, spacing: NativeDatePickerStyling.Layout.labelSpacing) {
+                    Text(label)
+                        .font(NativeDatePickerStyling.Typography.label)
+                        .foregroundStyle(NativeDatePickerStyling.Colors.label)
+                    DatePicker(
+                        label,
+                        selection: $selection,
+                        in: dateRange,
+                        displayedComponents: displayedComponents
+                    )
+                    .datePickerStyle(.wheel)
+                    .labelsHidden()
+                    .tint(NativeDatePickerStyling.Colors.tint)
+                }
             }
         }
     }

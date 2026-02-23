@@ -35,7 +35,7 @@ enum NativePickerStyling {
         //   • the chevron/caret indicator on the trigger button
         //   • the selection highlight ring in .wheel style
         // Change to Color.appSurfaceBrand for an all-black/white brand-colored picker.
-        static let tint = Color.appSurfaceAccentPrimary
+        static let tint = Color.appSurfaceBrand
 
         // Foreground color of the label text shown on the closed picker trigger.
         // This is the text the user reads before opening the menu.
@@ -44,7 +44,7 @@ enum NativePickerStyling {
         // Foreground color of the currently selected option's row text inside
         // the open dropdown. Making this distinct from optionText helps users
         // quickly spot their current selection.
-        static let selectedText = Color.appTextAccent
+        static let selectedText = Color.appTextBrand
 
         // Foreground color of all unselected options in the open dropdown list.
         static let optionText = Color.appTextPrimary
@@ -105,7 +105,7 @@ enum NativeDatePickerStyling {
         //   • The spinner drum highlight band in .wheel style
         //   • The disclosure button in .compact style
         // Change to Color.appSurfaceBrand for a monochrome-brand calendar.
-        static let tint = Color.appSurfaceAccentPrimary
+        static let tint = Color.appSurfaceBrand
 
         // Foreground color for the picker label text (the text passed as `label:`).
         // In .compact style this appears to the left of the date button.
@@ -358,7 +358,7 @@ enum NativeProgressLoaderStyling {
         // The accent color applied to the spinning indicator (indefinite)
         // or the filled portion of the linear progress bar (definite).
         // Change to Color.appSurfaceBrand for a monochrome loader.
-        static let tint = Color.appSurfaceAccentPrimary
+        static let tint = Color.appSurfaceBrand
 
         // Background (unfilled) track color for the linear determinate bar.
         // Note: SwiftUI does not directly expose the track color via .tint().
@@ -599,7 +599,7 @@ enum NativeColorPickerStyling {
 
         // Tint applied to interactive elements around the picker trigger.
         // The actual color swatch always shows the currently selected color.
-        static let tint = Color.appSurfaceAccentPrimary
+        static let tint = Color.appSurfaceBrand
     }
 
     struct Typography {
@@ -623,7 +623,7 @@ enum NativeRangeSliderStyling {
 
     struct Colors {
         // Fill color of the active track segment (the portion between the two thumbs).
-        static let trackActive = Color.appSurfaceAccentPrimary
+        static let trackActive = Color.appSurfaceBrand
 
         // Fill color of the inactive track segments (left of lower thumb and
         // right of upper thumb).

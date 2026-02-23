@@ -32,6 +32,14 @@ private struct HScrollRow<Content: View>: View {
     }
 }
 
+// MARK: - Carousel Card (for demo)
+
+private struct CarouselCard: Identifiable {
+    let id: Int
+    let color: Color
+    let label: String
+}
+
 // MARK: - Component Showcase
 
 struct ContentView: View {
@@ -59,7 +67,47 @@ struct ContentView: View {
     @State private var email = "user@example"
     @State private var bio = ""
 
+    // --- Native Components ---
+    @State private var pickerSelected = "AU"
+    @State private var selectedDate = Date()
+    @State private var selectedColor = Color.blue
+    @State private var showSheet = false
+    @State private var showSheetSmall = false
+    @State private var showSheetForm = false
+    @State private var showSheetList = false
+    @State private var showActionSheet = false
+    @State private var showAlert = false
+    @State private var showPopoverMenu = false
+    @State private var showTooltip = false
+    @State private var sliderLow = 20.0
+    @State private var sliderHigh = 80.0
+    @State private var sliderStepLow = 10.0
+    @State private var sliderStepHigh = 60.0
+    @State private var sheetFormName = ""
+    @State private var sheetFormEmail = ""
+
+    // BottomNavBar
+    @State private var selectedTab = 0
+
     var body: some View {
+        AppBottomNavBar(
+            selectedTab: $selectedTab,
+            style: .iconLabel,
+            tabs: [
+                AppNavTab(id: 0, label: "Components", icon: "square.grid.2x2"),
+                AppNavTab(id: 1, label: "Explore",    icon: "safari"),
+                AppNavTab(id: 2, label: "Settings",   icon: "gearshape"),
+            ]
+        ) {
+            showcaseTab
+            exploreTab
+            settingsTab
+        }
+    }
+
+    // MARK: - Showcase Tab
+
+    private var showcaseTab: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 40) {
@@ -760,18 +808,507 @@ struct ContentView: View {
                         }
                     }
 
+                    // ═══════════════════════════════════════════════════════
+                    // NATIVE COMPONENT WRAPPERS
+                    // ═══════════════════════════════════════════════════════
+
+                    AppDivider(type: .section, label: "Native Components")
+
+                    // ── Native Picker ────────────────────────────────────
+                    ShowcaseSection(title: "Native Picker — Menu") {
+                        VStack(spacing: .space3) {
+                            AppNativePicker(
+                                label: "Country",
+                                selection: $pickerSelected,
+                                options: [("Australia", "AU"), ("India", "IN"), ("USA", "US")]
+                            )
+                            AppNativePicker(
+                                label: "Size (error)",
+                                selection: .constant("S"),
+                                options: [("Small", "S"), ("Medium", "M"), ("Large", "L")],
+                                showError: true,
+                                errorMessage: "Please select a size"
+                            )
+                            AppNativePicker(
+                                label: "Region (disabled)",
+                                selection: .constant("N"),
+                                options: [("North", "N"), ("South", "S")],
+                                isDisabled: true
+                            )
+                        }
+                    }
+
+                    // ── DateTimePicker ────────────────────────────────────
+                    ShowcaseSection(title: "DateTimePicker — Compact") {
+                        AppDateTimePicker(label: "Date", selection: $selectedDate)
+                    }
+
+                    ShowcaseSection(title: "DateTimePicker — Graphical") {
+                        AppDateTimePicker(
+                            label: "Appointment",
+                            selection: $selectedDate,
+                            displayStyle: .graphical
+                        )
+                    }
+
+                    ShowcaseSection(title: "DateTimePicker — Wheel (time)") {
+                        AppDateTimePicker(
+                            label: "Alarm",
+                            selection: $selectedDate,
+                            mode: .time,
+                            displayStyle: .wheel
+                        )
+                    }
+
+                    // ── ProgressLoader ────────────────────────────────────
+                    ShowcaseSection(title: "ProgressLoader") {
+                        VStack(spacing: .space4) {
+                            HStack(spacing: .space6) {
+                                AppProgressLoader()
+                                AppProgressLoader(label: "Loading…")
+                            }
+                            AppProgressLoader(
+                                variant: .definite(value: 0.65, total: 1.0),
+                                label: "65%"
+                            )
+                            AppProgressLoader(
+                                variant: .definite(value: 3, total: 10),
+                                label: "Step 3 of 10"
+                            )
+                        }
+                    }
+
+                    // ── ColorPicker ──────────────────────────────────────
+                    ShowcaseSection(title: "ColorPicker") {
+                        VStack(spacing: .space3) {
+                            AppColorPicker(label: "Accent Color", selection: $selectedColor)
+                            AppColorPicker(
+                                label: "Background (with opacity)",
+                                selection: $selectedColor,
+                                supportsOpacity: true
+                            )
+                        }
+                    }
+
+                    // ── BottomSheet — Default (medium + large) ─────────
+                    ShowcaseSection(title: "BottomSheet — Default") {
+                        AppButton(label: "Medium / Large Sheet", variant: .secondary) {
+                            showSheet = true
+                        }
+                        .appBottomSheet(isPresented: $showSheet) {
+                            VStack(alignment: .leading, spacing: .space4) {
+                                Text("Default Sheet").font(.appTitleSmall)
+                                Text("Snaps to medium (~50%) and large (~90%). Drag the handle to resize.")
+                                    .font(.appBodyMedium)
+                                    .foregroundStyle(Color.typographySecondary)
+                                AppButton(label: "Close", variant: .primary) {
+                                    showSheet = false
+                                }
+                                Spacer()
+                            }
+                        }
+                    }
+
+                    // ── BottomSheet — Small (fraction) ──────────────────
+                    ShowcaseSection(title: "BottomSheet — Small (30%)") {
+                        AppButton(label: "Compact Sheet", variant: .secondary, size: .sm) {
+                            showSheetSmall = true
+                        }
+                        .appBottomSheet(
+                            isPresented: $showSheetSmall,
+                            detents: [.fraction(0.3)]
+                        ) {
+                            VStack(spacing: .space3) {
+                                Ph.checkCircle.fill
+                                    .iconSize(.xl)
+                                    .foregroundStyle(Color.appSurfaceSuccessSolid)
+                                Text("Action Complete")
+                                    .font(.appTitleSmall)
+                                Text("Your changes have been saved.")
+                                    .font(.appBodySmall)
+                                    .foregroundStyle(Color.typographySecondary)
+                                AppButton(label: "Done", variant: .primary, size: .sm) {
+                                    showSheetSmall = false
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                    }
+
+                    // ── BottomSheet — Form ───────────────────────────────
+                    ShowcaseSection(title: "BottomSheet — Form") {
+                        AppButton(label: "Open Form Sheet", variant: .secondary, size: .sm) {
+                            showSheetForm = true
+                        }
+                        .appBottomSheet(
+                            isPresented: $showSheetForm,
+                            detents: [.medium, .large]
+                        ) {
+                            VStack(alignment: .leading, spacing: .space4) {
+                                HStack {
+                                    Text("Quick Feedback").font(.appTitleSmall)
+                                    Spacer()
+                                    Button { showSheetForm = false } label: {
+                                        Ph.xCircle.fill
+                                            .iconSize(.md)
+                                            .foregroundStyle(Color.typographyMuted)
+                                    }
+                                }
+
+                                AppInputField(
+                                    text: $sheetFormName,
+                                    label: "Name",
+                                    placeholder: "Enter your name"
+                                )
+                                AppInputField(
+                                    text: $sheetFormEmail,
+                                    label: "Email",
+                                    placeholder: "you@example.com"
+                                )
+
+                                AppButton(label: "Submit", variant: .primary) {
+                                    showSheetForm = false
+                                }
+                                Spacer()
+                            }
+                        }
+                    }
+
+                    // ── BottomSheet — Scrollable list ────────────────────
+                    ShowcaseSection(title: "BottomSheet — List") {
+                        AppButton(label: "Open List Sheet", variant: .secondary, size: .sm) {
+                            showSheetList = true
+                        }
+                        .appBottomSheet(
+                            isPresented: $showSheetList,
+                            detents: [.medium, .large]
+                        ) {
+                            VStack(alignment: .leading, spacing: .space3) {
+                                HStack {
+                                    Text("Select Option").font(.appTitleSmall)
+                                    Spacer()
+                                    Button { showSheetList = false } label: {
+                                        Ph.xCircle.fill
+                                            .iconSize(.md)
+                                            .foregroundStyle(Color.typographyMuted)
+                                    }
+                                }
+                                ScrollView {
+                                    VStack(spacing: 0) {
+                                        ForEach(["Favourites", "Recent", "Documents", "Photos", "Music", "Videos", "Books", "Mail"], id: \.self) { label in
+                                            Button {
+                                                showSheetList = false
+                                            } label: {
+                                                HStack(spacing: .space3) {
+                                                    sheetListIcon(label)
+                                                        .frame(width: 24)
+                                                        .foregroundStyle(Color.appIconPrimary)
+                                                    Text(label)
+                                                        .font(.appBodyMedium)
+                                                        .foregroundStyle(Color.typographyPrimary)
+                                                    Spacer()
+                                                    Ph.caretRight.regular
+                                                        .iconSize(.sm)
+                                                        .foregroundStyle(Color.typographyMuted)
+                                                }
+                                                .padding(.vertical, .space3)
+                                            }
+                                            .buttonStyle(.plain)
+                                            AppDivider(type: .row)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // ── ActionSheet ──────────────────────────────────────
+                    ShowcaseSection(title: "ActionSheet") {
+                        AppButton(label: "Show Action Sheet", variant: .secondary) {
+                            showActionSheet = true
+                        }
+                        .appActionSheet(
+                            isPresented: $showActionSheet,
+                            title: "Post Options",
+                            message: "Choose an action for this post.",
+                            actions: [
+                                .default("Edit") { },
+                                .default("Share") { },
+                                .destructive("Delete") { },
+                                .cancel()
+                            ]
+                        )
+                    }
+
+                    // ── Alert Popup ──────────────────────────────────────
+                    ShowcaseSection(title: "Alert Popup") {
+                        AppButton(label: "Show Alert", variant: .danger) {
+                            showAlert = true
+                        }
+                        .appAlert(
+                            isPresented: $showAlert,
+                            title: "Delete Item?",
+                            message: "This action cannot be undone.",
+                            buttons: [
+                                .destructive("Delete") { },
+                                .cancel()
+                            ]
+                        )
+                    }
+
+                    // ── Context Menu ─────────────────────────────────────
+                    ShowcaseSection(title: "Context Menu — Long press") {
+                        Text("Long-press me")
+                            .font(.appBodyMedium)
+                            .padding(.space3)
+                            .background(
+                                Color.surfacesBaseLowContrast,
+                                in: RoundedRectangle(cornerRadius: .radiusMD)
+                            )
+                            .appContextMenu(items: [
+                                .item("Edit", icon: AnyView(Ph.pencilSimple.regular)) { },
+                                .item("Share", icon: AnyView(Ph.share.regular)) { },
+                                .destructive("Delete", icon: AnyView(Ph.trash.regular)) { }
+                            ])
+                    }
+
+                    ShowcaseSection(title: "Context Menu — Popover (tap)") {
+                        AppPopoverMenu(isPresented: $showPopoverMenu, items: [
+                            .item("Edit", icon: AnyView(Ph.pencilSimple.regular)) { },
+                            .item("Duplicate", icon: AnyView(Ph.copy.regular)) { },
+                            .destructive("Delete", icon: AnyView(Ph.trash.regular)) { }
+                        ]) {
+                            HStack(spacing: .space2) {
+                                Text("Tap for menu")
+                                    .font(.appBodyMedium)
+                                Ph.dotsThreeCircle.regular
+                                    .iconSize(.md)
+                                    .foregroundStyle(Color.appIconPrimary)
+                            }
+                            .padding(.space3)
+                            .background(
+                                Color.surfacesBaseLowContrast,
+                                in: RoundedRectangle(cornerRadius: .radiusMD)
+                            )
+                        }
+                    }
+
+                    // ── Carousel ─────────────────────────────────────────
+                    ShowcaseSection(title: "Carousel — Paged") {
+                        let cards = [
+                            CarouselCard(id: 0, color: Color.appSurfaceAccentPrimary, label: "Card 1"),
+                            CarouselCard(id: 1, color: Color.appSurfaceSuccessSolid, label: "Card 2"),
+                            CarouselCard(id: 2, color: Color.appSurfaceErrorSolid, label: "Card 3"),
+                        ]
+                        AppCarousel(items: cards) { card in
+                            RoundedRectangle(cornerRadius: .radiusLG)
+                                .fill(card.color)
+                                .overlay(
+                                    Text(card.label)
+                                        .font(.appTitleSmall)
+                                        .foregroundStyle(.white)
+                                )
+                                .padding(.horizontal, .space4)
+                        }
+                    }
+
+                    ShowcaseSection(title: "Carousel — Scroll Snap") {
+                        let cards = [
+                            CarouselCard(id: 0, color: Color.appSurfaceAccentPrimary, label: "Snap 1"),
+                            CarouselCard(id: 1, color: Color.appSurfaceSuccessSolid, label: "Snap 2"),
+                            CarouselCard(id: 2, color: Color.appSurfaceErrorSolid, label: "Snap 3"),
+                        ]
+                        AppCarousel(items: cards, style: .scrollSnap) { card in
+                            RoundedRectangle(cornerRadius: .radiusLG)
+                                .fill(card.color)
+                                .overlay(
+                                    Text(card.label)
+                                        .font(.appBodyMediumEm)
+                                        .foregroundStyle(.white)
+                                )
+                                .frame(width: 280, height: 160)
+                        }
+                    }
+
+                    // ── Tooltip ──────────────────────────────────────────
+                    ShowcaseSection(title: "Tooltip") {
+                        HStack(spacing: .space6) {
+                            AppTooltip(isPresented: $showTooltip, tipText: "Tap the heart to like this post", arrowEdge: .bottom) {
+                                VStack(spacing: .space1) {
+                                    Ph.heart.regular
+                                        .iconSize(.lg)
+                                        .foregroundStyle(Color.appIconPrimary)
+                                    Text("Tap me")
+                                        .font(.appCaptionSmall)
+                                        .foregroundStyle(Color.typographyMuted)
+                                }
+                                .onTapGesture { showTooltip.toggle() }
+                            }
+                        }
+                    }
+
+                    // ── Range Slider ─────────────────────────────────────
+                    ShowcaseSection(title: "RangeSlider — Continuous") {
+                        AppRangeSlider(
+                            lowerValue: $sliderLow,
+                            upperValue: $sliderHigh,
+                            range: 0...100,
+                            showLabels: true
+                        )
+                    }
+
+                    ShowcaseSection(title: "RangeSlider — Step 10") {
+                        AppRangeSlider(
+                            lowerValue: $sliderStepLow,
+                            upperValue: $sliderStepHigh,
+                            range: 0...100,
+                            step: 10,
+                            showLabels: true
+                        )
+                    }
+
+                    // ── Bottom Nav Bar (note) ────────────────────────────
+                    ShowcaseSection(title: "BottomNavBar") {
+                        VStack(alignment: .leading, spacing: .space2) {
+                            Text("✅ AppBottomNavBar is live — this page is wrapped in it. Switch between the Components, Explore, and Settings tabs below.")
+                                .font(.appBodySmall)
+                                .foregroundStyle(Color.typographySecondary)
+                            Text("Uses NativeBottomNavStyling for appearance. See AppBottomNavBar.swift.")
+                                .font(.appCaptionSmall)
+                                .foregroundStyle(Color.typographyMuted)
+                        }
+                        .padding(.space3)
+                        .background(
+                            Color.surfacesBaseLowContrast,
+                            in: RoundedRectangle(cornerRadius: .radiusMD)
+                        )
+                    }
+
+                    // ── Page Header (note) ───────────────────────────────
+                    ShowcaseSection(title: "PageHeader") {
+                        VStack(alignment: .leading, spacing: .space2) {
+                            Text("This page uses a large collapsing title via .navigationTitle(). Scroll up to see it collapse to inline.")
+                                .font(.appBodySmall)
+                                .foregroundStyle(Color.typographySecondary)
+                            Text("AppPageHeader is a ViewModifier (.appPageHeader) for toolbar styling. See AppPageHeader.swift.")
+                                .font(.appCaptionSmall)
+                                .foregroundStyle(Color.typographyMuted)
+                        }
+                        .padding(.space3)
+                        .background(
+                            Color.surfacesBaseLowContrast,
+                            in: RoundedRectangle(cornerRadius: .radiusMD)
+                        )
+                    }
+
                 }
                 .padding(.horizontal, .space4)
                 .padding(.vertical, .space6)
             }
             .background(Color.surfacesBasePrimary)
-            .navigationTitle("Component Showcase")
+            .navigationTitle("Components")
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { } label: {
+                        Ph.caretLeft.regular
+                            .iconSize(.md)
+                            .iconColor(.appIconPrimary)
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    HStack(spacing: .space2) {
+                        Button { } label: {
+                            Ph.magnifyingGlass.regular
+                                .iconSize(.md)
+                                .iconColor(.appIconPrimary)
+                        }
+                        Button { } label: {
+                            Ph.bell.regular
+                                .iconSize(.md)
+                                .iconColor(.appIconPrimary)
+                        }
+                    }
+                }
+            }
         }
         .toastOverlay(isPresented: $showToast) {
             AppToast(message: toastMessage, dismissible: true, onDismiss: {
                 withAnimation { showToast = false }
             })
+        }
+    }
+
+    // MARK: - Explore Tab
+
+    private var exploreTab: some View {
+        NavigationStack {
+            VStack(spacing: .space4) {
+                Spacer()
+                Ph.compass.regular
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 48, height: 48)
+                    .foregroundStyle(Color.typographyMuted)
+                Text("Explore")
+                    .font(.appTitleSmall)
+                    .foregroundStyle(Color.typographyPrimary)
+                Text("This tab demonstrates AppBottomNavBar.\nSwitch between tabs below.")
+                    .font(.appBodySmall)
+                    .foregroundStyle(Color.typographySecondary)
+                    .multilineTextAlignment(.center)
+                Spacer()
+            }
+            .padding(.horizontal, .space4)
+            .frame(maxWidth: .infinity)
+            .background(Color.surfacesBasePrimary)
+            .navigationTitle("Explore")
+            .navigationBarTitleDisplayMode(.large)
+        }
+    }
+
+    // MARK: - Settings Tab
+
+    private var settingsTab: some View {
+        NavigationStack {
+            VStack(spacing: .space4) {
+                Spacer()
+                Ph.gear.regular
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 48, height: 48)
+                    .foregroundStyle(Color.typographyMuted)
+                Text("Settings")
+                    .font(.appTitleSmall)
+                    .foregroundStyle(Color.typographyPrimary)
+                Text("Another tab for AppBottomNavBar demo.")
+                    .font(.appBodySmall)
+                    .foregroundStyle(Color.typographySecondary)
+                    .multilineTextAlignment(.center)
+                Spacer()
+            }
+            .padding(.horizontal, .space4)
+            .frame(maxWidth: .infinity)
+            .background(Color.surfacesBasePrimary)
+            .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.large)
+        }
+    }
+
+    // MARK: - Sheet List Icon Helper
+
+    @ViewBuilder
+    private func sheetListIcon(_ label: String) -> some View {
+        switch label {
+        case "Favourites": Ph.star.fill.iconSize(.md)
+        case "Recent": Ph.clock.regular.iconSize(.md)
+        case "Documents": Ph.folder.regular.iconSize(.md)
+        case "Photos": Ph.image.regular.iconSize(.md)
+        case "Music": Ph.musicNote.regular.iconSize(.md)
+        case "Videos": Ph.filmStrip.regular.iconSize(.md)
+        case "Books": Ph.bookOpen.regular.iconSize(.md)
+        case "Mail": Ph.envelope.regular.iconSize(.md)
+        default: Ph.circle.regular.iconSize(.md)
         }
     }
 }

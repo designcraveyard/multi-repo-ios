@@ -66,15 +66,12 @@ public struct AppNativePicker<T: Hashable>: View {
             .opacity(isDisabled ? 0.5 : 1.0)
             .padding(.vertical, NativePickerStyling.Layout.paddingV)
             .padding(.horizontal, NativePickerStyling.Layout.paddingH)
+            // Only draw a border in the error state; the native menu button has no bounding box.
             .background(
                 RoundedRectangle(cornerRadius: NativePickerStyling.Layout.cornerRadius)
                     .stroke(
-                        showError
-                            ? NativePickerStyling.Colors.errorBorder
-                            : Color.appBorderDefault,
-                        lineWidth: showError
-                            ? NativePickerStyling.Layout.errorBorderWidth
-                            : NativePickerStyling.Layout.defaultBorderWidth
+                        showError ? NativePickerStyling.Colors.errorBorder : Color.clear,
+                        lineWidth: showError ? NativePickerStyling.Layout.errorBorderWidth : 0
                     )
             )
 

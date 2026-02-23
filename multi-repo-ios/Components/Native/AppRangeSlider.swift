@@ -1,15 +1,18 @@
 // AppRangeSlider.swift
-// Style source: NativeComponentStyling.swift › NativeRangeSliderStyling
+// Style source: NativeComponentStyling.swift > NativeRangeSliderStyling
 //
-// SwiftUI has no native range slider. This implementation stacks two invisible
-// Slider views in a ZStack and draws a custom active track rectangle between
-// the lower and upper thumb positions using GeometryReader.
+// Custom DragGesture-based range slider. The previous dual-Slider approach caused
+// both thumbs to move simultaneously because overlapping Slider gesture recognizers
+// conflicted. This version uses a single DragGesture with proximity-based thumb
+// selection — only the nearest thumb moves on each drag.
 //
 // How it works:
-//   • Lower Slider: range from [range.lowerBound ... upperValue - minDistance]
-//   • Upper Slider: range from [lowerValue + minDistance ... range.upperBound]
-//   • Both Sliders have .tint(.clear) to hide their native filled track
-//   • A custom Rectangle is positioned between lowerValue and upperValue thumbs
+//   * GeometryReader measures the available width
+//   * Two Circle thumbs are drawn at normalized lower/upper positions
+//   * A single DragGesture covers the entire track area
+//   * On touch-down, the closest thumb is selected (ActiveThumb enum)
+//   * On drag, only the active thumb's value updates
+//   * Step snapping rounds to the nearest step increment
 //
 // Usage:
 //   @State var low  = 20.0
@@ -22,6 +25,7 @@
 //                  step: 5, showLabels: true)
 
 import SwiftUI
+import UIKit
 
 // MARK: - AppRangeSlider
 
@@ -47,8 +51,23 @@ public struct AppRangeSlider: View {
     var showLabels: Bool = false
 
     /// Minimum distance between lowerValue and upperValue.
-    /// Prevents the two thumbs from occupying the same position.
-    private var minDistance: Double { step > 0 ? step : 0.001 }
+    /// Step mode: one full step. Continuous: 1% of the range.
+    private var minDistance: Double {
+        step > 0 ? step : (range.upperBound - range.lowerBound) * 0.01
+    }
+
+    /// Tracks which thumb the current gesture is dragging.
+    @State private var activeThumb: ActiveThumb? = nil
+
+    private enum ActiveThumb { case lower, upper }
+
+    // MARK: - Haptics
+
+    /// Light impact fired when a thumb is first grabbed.
+    private let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+
+    /// Selection tick fired on each discrete step change (step mode only).
+    private let selectionFeedback = UISelectionFeedbackGenerator()
 
     // MARK: - Body
 
@@ -56,54 +75,73 @@ public struct AppRangeSlider: View {
         VStack(spacing: NativeRangeSliderStyling.Layout.labelSpacing) {
             GeometryReader { geometry in
                 let width = geometry.size.width
+                let thumbR = NativeRangeSliderStyling.Layout.thumbDiameter / 2
+                // Usable horizontal range for thumb center positions
+                let trackW = max(width - NativeRangeSliderStyling.Layout.thumbDiameter, 1)
 
                 ZStack(alignment: .leading) {
                     // ── Background (inactive) track
                     Capsule()
                         .fill(NativeRangeSliderStyling.Colors.trackBackground)
                         .frame(height: NativeRangeSliderStyling.Layout.trackHeight)
+                        .padding(.horizontal, thumbR)
 
                     // ── Active track segment between lower and upper thumbs
                     Capsule()
                         .fill(NativeRangeSliderStyling.Colors.trackActive)
                         .frame(
-                            width: activeWidth(in: width),
+                            width: CGFloat(normalizedUpper - normalizedLower) * trackW,
                             height: NativeRangeSliderStyling.Layout.trackHeight
                         )
-                        .offset(x: lowerOffset(in: width))
+                        .offset(x: thumbR + CGFloat(normalizedLower) * trackW)
 
-                    // ── Lower thumb Slider (invisible track, visible thumb)
-                    //    Range clamped so lower cannot exceed upper - minDistance
-                    Slider(
-                        value: $lowerValue,
-                        in: range.lowerBound...(upperValue - minDistance),
-                        step: step > 0 ? step : 0.001
-                    )
-                    // Clear tint hides the native filled track; only the white thumb remains
-                    .tint(.clear)
-                    .onChange(of: lowerValue) { _, new in
-                        // Safety clamp — prevents floating point edge cases
-                        if new > upperValue - minDistance {
-                            lowerValue = upperValue - minDistance
-                        }
-                    }
+                    // ── Lower thumb
+                    thumbCircle
+                        .offset(x: CGFloat(normalizedLower) * trackW)
 
-                    // ── Upper thumb Slider (invisible track, visible thumb)
-                    //    Range clamped so upper cannot go below lower + minDistance
-                    Slider(
-                        value: $upperValue,
-                        in: (lowerValue + minDistance)...range.upperBound,
-                        step: step > 0 ? step : 0.001
-                    )
-                    .tint(.clear)
-                    .onChange(of: upperValue) { _, new in
-                        if new < lowerValue + minDistance {
-                            upperValue = lowerValue + minDistance
-                        }
-                    }
+                    // ── Upper thumb
+                    thumbCircle
+                        .offset(x: CGFloat(normalizedUpper) * trackW)
                 }
-                // Total height must be ≥ 44pt for accessibility minimum touch target
                 .frame(height: NativeRangeSliderStyling.Layout.totalHeight)
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { gesture in
+                            let ratio = Double(max(0, min((gesture.location.x - thumbR) / trackW, 1)))
+                            let rawValue = range.lowerBound + ratio * rangeSpan
+                            let snapped = step > 0
+                                ? (rawValue / step).rounded() * step
+                                : rawValue
+                            let clamped = min(max(snapped, range.lowerBound), range.upperBound)
+
+                            // On first touch, select the nearest thumb + impact haptic
+                            if activeThumb == nil {
+                                let dLower = abs(clamped - lowerValue)
+                                let dUpper = abs(clamped - upperValue)
+                                activeThumb = dLower <= dUpper ? .lower : .upper
+                                impactFeedback.impactOccurred()
+                            }
+
+                            // Update only the active thumb, respecting minDistance.
+                            // Fire a selection haptic on each discrete step change.
+                            switch activeThumb {
+                            case .lower:
+                                let newValue = min(clamped, upperValue - minDistance)
+                                if step > 0 && newValue != lowerValue { selectionFeedback.selectionChanged() }
+                                lowerValue = newValue
+                            case .upper:
+                                let newValue = max(clamped, lowerValue + minDistance)
+                                if step > 0 && newValue != upperValue { selectionFeedback.selectionChanged() }
+                                upperValue = newValue
+                            case .none:
+                                break
+                            }
+                        }
+                        .onEnded { _ in
+                            activeThumb = nil
+                        }
+                )
             }
             .frame(height: NativeRangeSliderStyling.Layout.totalHeight)
 
@@ -122,22 +160,37 @@ public struct AppRangeSlider: View {
         }
     }
 
+    // MARK: - Subviews
+
+    /// Reusable thumb circle view with shadow and border.
+    private var thumbCircle: some View {
+        Circle()
+            .fill(NativeRangeSliderStyling.Colors.thumb)
+            .overlay(Circle().stroke(NativeRangeSliderStyling.Colors.thumbShadow, lineWidth: 0.5))
+            .shadow(color: .black.opacity(0.15), radius: 2, y: 1)
+            .frame(
+                width: NativeRangeSliderStyling.Layout.thumbDiameter,
+                height: NativeRangeSliderStyling.Layout.thumbDiameter
+            )
+    }
+
     // MARK: - Helpers
 
-    /// X offset of the active track's left edge (where the lower thumb sits).
-    private func lowerOffset(in width: CGFloat) -> CGFloat {
-        let ratio = (lowerValue - range.lowerBound) / (range.upperBound - range.lowerBound)
-        return CGFloat(ratio) * width
+    private var rangeSpan: Double { range.upperBound - range.lowerBound }
+
+    /// Lower value normalized to 0…1
+    private var normalizedLower: Double {
+        guard rangeSpan > 0 else { return 0 }
+        return (lowerValue - range.lowerBound) / rangeSpan
     }
 
-    /// Width of the active track segment between lower and upper thumbs.
-    private func activeWidth(in width: CGFloat) -> CGFloat {
-        let lowerRatio = (lowerValue - range.lowerBound) / (range.upperBound - range.lowerBound)
-        let upperRatio = (upperValue - range.lowerBound) / (range.upperBound - range.lowerBound)
-        return CGFloat(upperRatio - lowerRatio) * width
+    /// Upper value normalized to 0…1
+    private var normalizedUpper: Double {
+        guard rangeSpan > 0 else { return 1 }
+        return (upperValue - range.lowerBound) / rangeSpan
     }
 
-    /// Formats a Double value for the min/max label — integers show without decimal.
+    /// Formats a Double value for the min/max label -- integers show without decimal.
     private func formatted(_ value: Double) -> String {
         value.truncatingRemainder(dividingBy: 1) == 0
             ? String(Int(value))
@@ -150,8 +203,8 @@ public struct AppRangeSlider: View {
 #Preview {
     @Previewable @State var low  = 20.0
     @Previewable @State var high = 80.0
-    @Previewable @State var low2 = 0.0
-    @Previewable @State var high2 = 50.0
+    @Previewable @State var low2 = 10.0
+    @Previewable @State var high2 = 60.0
 
     VStack(spacing: 40) {
         VStack(alignment: .leading, spacing: 8) {

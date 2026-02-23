@@ -5,39 +5,40 @@
 //
 //   1. appContextMenu(items:) — long-press .contextMenu modifier
 //      someView.appContextMenu(items: [
-//          .item("Edit", systemImage: "pencil") { edit() },
-//          .destructive("Delete", systemImage: "trash") { delete() }
+//          .item("Edit", icon: AnyView(Ph.pencilSimple.regular)) { edit() },
+//          .destructive("Delete", icon: AnyView(Ph.trash.regular)) { delete() }
 //      ])
 //
 //   2. AppPopoverMenu — tap-triggered popover with custom card
 //      AppPopoverMenu(isPresented: $showMenu, items: [...]) {
-//          Image(systemName: "ellipsis")
+//          Ph.dotsThreeCircle.regular.iconSize(.lg)
 //      }
 
 import SwiftUI
+import PhosphorSwift
 
 // MARK: - AppContextMenuItem
 
 /// Represents a single item in a context menu or popover menu.
 public struct AppContextMenuItem {
     let label: String
-    let systemImage: String?    // SF Symbol name, e.g. "pencil", "trash"
+    let icon: AnyView?          // Any icon view (e.g. Phosphor icon)
     let role: ButtonRole?
     let handler: () -> Void
 
     /// A standard menu item. Renders in the default text color.
     public static func item(_ label: String,
-                             systemImage: String? = nil,
+                             icon: AnyView? = nil,
                              handler: @escaping () -> Void) -> AppContextMenuItem {
-        AppContextMenuItem(label: label, systemImage: systemImage, role: nil, handler: handler)
+        AppContextMenuItem(label: label, icon: icon, role: nil, handler: handler)
     }
 
     /// A destructive menu item. iOS .contextMenu renders it red automatically.
     /// AppPopoverMenu uses NativeContextMenuStyling.Colors.destructiveText explicitly.
     public static func destructive(_ label: String,
-                                    systemImage: String? = nil,
+                                    icon: AnyView? = nil,
                                     handler: @escaping () -> Void) -> AppContextMenuItem {
-        AppContextMenuItem(label: label, systemImage: systemImage, role: .destructive, handler: handler)
+        AppContextMenuItem(label: label, icon: icon, role: .destructive, handler: handler)
     }
 }
 
@@ -51,8 +52,12 @@ private struct AppContextMenuModifier: ViewModifier {
         content.contextMenu {
             ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                 Button(role: item.role, action: item.handler) {
-                    if let systemImage = item.systemImage {
-                        Label(item.label, systemImage: systemImage)
+                    if let icon = item.icon {
+                        Label {
+                            Text(item.label)
+                        } icon: {
+                            icon
+                        }
                     } else {
                         Text(item.label)
                     }
@@ -95,8 +100,8 @@ public struct AppPopoverMenu<Label: View>: View {
                             isPresented = false
                         } label: {
                             HStack(spacing: NativeContextMenuStyling.Layout.itemIconSpacing) {
-                                if let systemImage = item.systemImage {
-                                    Image(systemName: systemImage)
+                                if let icon = item.icon {
+                                    icon
                                         .foregroundStyle(item.role == .destructive
                                             ? NativeContextMenuStyling.Colors.destructiveText
                                             : NativeContextMenuStyling.Colors.itemText)
@@ -140,19 +145,19 @@ public struct AppPopoverMenu<Label: View>: View {
             .padding()
             .background(Color.appSurfaceBaseLowContrast, in: RoundedRectangle(cornerRadius: .radiusMD))
             .appContextMenu(items: [
-                .item("Edit", systemImage: "pencil") { },
-                .item("Share", systemImage: "square.and.arrow.up") { },
-                .destructive("Delete", systemImage: "trash") { }
+                .item("Edit", icon: AnyView(Ph.pencilSimple.regular)) { },
+                .item("Share", icon: AnyView(Ph.share.regular)) { },
+                .destructive("Delete", icon: AnyView(Ph.trash.regular)) { }
             ])
 
         // Tap-triggered popover menu
         AppPopoverMenu(isPresented: $showPopover, items: [
-            .item("Edit", systemImage: "pencil") { },
-            .destructive("Delete", systemImage: "trash") { }
+            .item("Edit", icon: AnyView(Ph.pencilSimple.regular)) { },
+            .destructive("Delete", icon: AnyView(Ph.trash.regular)) { }
         ]) {
-            Image(systemName: "ellipsis.circle")
-                .font(.title2)
-                .foregroundStyle(Color.appIconPrimary)
+            Ph.dotsThreeCircle.regular
+                .iconSize(.lg)
+                .iconColor(.appIconPrimary)
         }
     }
     .padding()
