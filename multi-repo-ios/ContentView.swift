@@ -86,6 +86,15 @@ struct ContentView: View {
     @State private var sheetFormName = ""
     @State private var sheetFormEmail = ""
 
+    // Form Controls
+    @State private var radioValue = "email"
+    @State private var checkNotifications = true
+    @State private var checkUpdates = false
+    @State private var checkMarketing = false
+    @State private var switchDarkMode = false
+    @State private var switchNotifications = true
+    @State private var switchLocation = false
+
     // BottomNavBar
     @State private var selectedTab = 0
 
@@ -802,6 +811,124 @@ struct ContentView: View {
                                     accessibilityLabel: "More options",
                                     action: {}
                                 )
+                            )
+                        }
+                    }
+
+                    // ── Radio Buttons ──────────────────────────────────────
+                    ShowcaseSection(title: "Radio Buttons — Standalone") {
+                        VStack(alignment: .leading, spacing: .space3) {
+                            AppRadioButton(checked: true, label: "Selected radio")
+                            AppRadioButton(checked: false, label: "Unselected radio")
+                            AppRadioButton(checked: true, label: "Disabled selected", disabled: true)
+                        }
+                    }
+
+                    ShowcaseSection(title: "Radio Buttons — Group") {
+                        AppRadioGroup(value: $radioValue) {
+                            AppRadioButton(label: "Email", value: "email")
+                            AppRadioButton(label: "SMS", value: "sms")
+                            AppRadioButton(label: "Push notification", value: "push")
+                        }
+                    }
+
+                    ShowcaseSection(title: "Radio Buttons — As ListItem") {
+                        VStack(spacing: 0) {
+                            AppListItem(
+                                title: "Email",
+                                subtitle: "Receive updates via email",
+                                trailing: .radio(checked: radioValue == "email") { _ in radioValue = "email" },
+                                divider: true
+                            )
+                            AppListItem(
+                                title: "SMS",
+                                subtitle: "Receive updates via text message",
+                                trailing: .radio(checked: radioValue == "sms") { _ in radioValue = "sms" },
+                                divider: true
+                            )
+                            AppListItem(
+                                title: "Push notification",
+                                subtitle: "Receive updates on your device",
+                                trailing: .radio(checked: radioValue == "push") { _ in radioValue = "push" }
+                            )
+                        }
+                    }
+
+                    // ── Checkboxes ─────────────────────────────────────────
+                    ShowcaseSection(title: "Checkboxes — Standalone") {
+                        VStack(alignment: .leading, spacing: .space3) {
+                            AppCheckbox(checked: true, label: "Checked")
+                            AppCheckbox(checked: false, label: "Unchecked")
+                            AppCheckbox(checked: true, indeterminate: true, label: "Indeterminate")
+                            AppCheckbox(checked: true, label: "Disabled checked", disabled: true)
+                        }
+                    }
+
+                    ShowcaseSection(title: "Checkboxes — Email Preferences") {
+                        let allChecked = checkNotifications && checkUpdates && checkMarketing
+                        let someChecked = checkNotifications || checkUpdates || checkMarketing
+
+                        VStack(spacing: 0) {
+                            AppListItem(
+                                title: "Select all",
+                                trailing: .checkbox(
+                                    checked: allChecked,
+                                    indeterminate: !allChecked && someChecked,
+                                    onChange: { val in
+                                        checkNotifications = val
+                                        checkUpdates = val
+                                        checkMarketing = val
+                                    }
+                                ),
+                                divider: true
+                            )
+                            AppListItem(
+                                title: "Notifications",
+                                subtitle: "Transaction alerts and reminders",
+                                trailing: .checkbox(checked: checkNotifications, onChange: { checkNotifications = $0 }),
+                                divider: true
+                            )
+                            AppListItem(
+                                title: "Product updates",
+                                subtitle: "New features and improvements",
+                                trailing: .checkbox(checked: checkUpdates, onChange: { checkUpdates = $0 }),
+                                divider: true
+                            )
+                            AppListItem(
+                                title: "Marketing",
+                                subtitle: "Promotions and special offers",
+                                trailing: .checkbox(checked: checkMarketing, onChange: { checkMarketing = $0 })
+                            )
+                        }
+                    }
+
+                    // ── Switches ────────────────────────────────────────────
+                    ShowcaseSection(title: "Switches — Standalone") {
+                        VStack(alignment: .leading, spacing: .space3) {
+                            AppSwitch(checked: true, label: "On")
+                            AppSwitch(checked: false, label: "Off")
+                            AppSwitch(checked: true, label: "Disabled on", disabled: true)
+                        }
+                    }
+
+                    ShowcaseSection(title: "Switches — Settings") {
+                        VStack(spacing: 0) {
+                            AppListItem(
+                                title: "Dark mode",
+                                subtitle: "Use dark color theme",
+                                trailing: .toggle(checked: switchDarkMode, onChange: { switchDarkMode = $0 }),
+                                divider: true
+                            )
+                            AppListItem(
+                                title: "Notifications",
+                                subtitle: "Enable push notifications",
+                                trailing: .toggle(checked: switchNotifications, onChange: { switchNotifications = $0 }),
+                                divider: true
+                            )
+                            AppListItem(
+                                title: "Location services",
+                                subtitle: "Allow access to your location",
+                                trailing: .toggle(checked: switchLocation, onChange: { switchLocation = $0 })
                             )
                         }
                     }

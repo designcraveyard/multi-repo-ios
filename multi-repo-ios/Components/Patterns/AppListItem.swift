@@ -41,7 +41,7 @@ public struct AppThumbnailConfig {
     }
 }
 
-/// Trailing slot — one of: a button, an icon button, a badge, or nothing.
+/// Trailing slot — one of: a button, an icon button, a badge, radio, checkbox, switch, or nothing.
 public enum AppListItemTrailing {
     case button(
         label: String,
@@ -59,6 +59,19 @@ public enum AppListItemTrailing {
         label: String,
         type: AppBadgeType = .brand,
         subtle: Bool = false
+    )
+    case radio(
+        checked: Bool,
+        onChange: (Bool) -> Void
+    )
+    case checkbox(
+        checked: Bool,
+        indeterminate: Bool = false,
+        onChange: (Bool) -> Void
+    )
+    case toggle(
+        checked: Bool,
+        onChange: (Bool) -> Void
     )
 }
 
@@ -112,6 +125,21 @@ public struct AppListItem: View {
         }
     }
 
+    // MARK: - Helpers
+
+    /// Returns true when the trailing selection control is in a selected/on state,
+    /// or when the trailing is a non-selection type (button, badge, icon) — those
+    /// always render the title with emphasis.
+    private var isTrailingSelected: Bool {
+        guard let trailing else { return true }
+        switch trailing {
+        case .radio(let checked, _):             return checked
+        case .checkbox(let checked, _, _):       return checked
+        case .toggle(let checked, _):            return checked
+        default:                                 return true
+        }
+    }
+
     // MARK: - Subviews
 
     @ViewBuilder
@@ -129,12 +157,28 @@ public struct AppListItem: View {
     }
 
     private var textContent: some View {
-        AppTextBlock(
-            title: title,
-            subtext: subtitle,
-            body: bodyText,
-            metadata: metadata
-        )
+        // Title font steps up to appBodyLargeEm (medium weight) when the trailing
+        // selection control is active; falls back to appBodyLarge (regular) when off.
+        VStack(alignment: .leading, spacing: .space1) {
+            Text(title)
+                .font(isTrailingSelected ? .appBodyLargeEm : .appBodyLarge)
+                .foregroundStyle(Color.typographyPrimary)
+            if let subtitle {
+                Text(subtitle)
+                    .font(.appBodySmall)
+                    .foregroundStyle(Color.typographyMuted)
+            }
+            if let bodyText {
+                Text(bodyText)
+                    .font(.appBodyMedium)
+                    .foregroundStyle(Color.typographySecondary)
+            }
+            if let metadata {
+                Text(metadata)
+                    .font(.appCaptionSmall)
+                    .foregroundStyle(Color.typographyMuted)
+            }
+        }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -152,6 +196,15 @@ public struct AppListItem: View {
 
             case let .badge(label, type, subtle):
                 AppBadge(label: label, type: type, subtle: subtle)
+
+            case let .radio(checked, onChange):
+                AppRadioButton(checked: checked, onChange: onChange)
+
+            case let .checkbox(checked, indeterminate, onChange):
+                AppCheckbox(checked: checked, indeterminate: indeterminate, onChange: onChange)
+
+            case let .toggle(checked, onChange):
+                AppSwitch(checked: checked, onChange: onChange)
             }
         }
     }

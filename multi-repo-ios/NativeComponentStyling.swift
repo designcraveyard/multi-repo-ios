@@ -404,7 +404,7 @@ enum NativeCarouselStyling {
         static let dotActive = Color.appSurfaceBrand
 
         // Fill color of all dots representing pages that are NOT currently visible.
-        static let dotInactive = Color.appSurfaceBaseLowContrast
+        static let dotInactive = Color.surfacesBaseHighContrast
 
         // Background of the page indicator row (the row containing all dots).
         // Set to Color.clear (default) to render dots directly on the carousel content.
