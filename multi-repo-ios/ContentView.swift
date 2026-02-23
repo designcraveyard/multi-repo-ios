@@ -86,6 +86,15 @@ struct ContentView: View {
     @State private var sheetFormName = ""
     @State private var sheetFormEmail = ""
 
+    // Form — Pickers + Input Fields
+    @State private var formName = ""
+    @State private var formEmail = ""
+    @State private var formCountry = "IN"
+    @State private var formDOB = Date()
+    @State private var formLanguage = "EN"
+    @State private var formPhone = ""
+    @State private var formBio = ""
+
     // Form Controls
     @State private var radioValue = "email"
     @State private var checkNotifications = true
@@ -715,6 +724,51 @@ struct ContentView: View {
                                 leadingLabel: AnyView(AppLabel(label: "USD", size: .md, type: .secondaryAction)),
                                 leadingSeparator: true
                             )
+                        }
+                    }
+
+                    // ── Form — Pickers + Input Fields ────────────────────
+                    ShowcaseSection(title: "Form — Pickers + Input Fields") {
+                        VStack(spacing: .space3) {
+                            AppInputField(
+                                text: $formName,
+                                label: "Full Name",
+                                placeholder: "Enter your name",
+                                leadingIcon: AnyView(Ph.user.regular.iconSize(.md))
+                            )
+                            AppInputField(
+                                text: $formEmail,
+                                label: "Email",
+                                placeholder: "you@example.com",
+                                leadingIcon: AnyView(Ph.envelope.regular.iconSize(.md))
+                            )
+                            AppNativePicker(
+                                label: "Country",
+                                selection: $formCountry,
+                                options: [("Australia", "AU"), ("India", "IN"), ("USA", "US"), ("UK", "UK")]
+                            )
+                            AppDateTimePicker(
+                                label: "Date of Birth",
+                                selection: $formDOB,
+                                mode: .date
+                            )
+                            AppNativePicker(
+                                label: "Preferred Language",
+                                selection: $formLanguage,
+                                options: [("English", "EN"), ("Hindi", "HI"), ("Spanish", "ES")]
+                            )
+                            AppInputField(
+                                text: $formPhone,
+                                label: "Phone",
+                                placeholder: "+1 (555) 000-0000",
+                                leadingIcon: AnyView(Ph.phone.regular.iconSize(.md))
+                            )
+                            AppTextField(
+                                text: $formBio,
+                                label: "Bio",
+                                placeholder: "Tell us about yourself…"
+                            )
+                            AppButton(label: "Submit", variant: .primary) {}
                         }
                     }
 
