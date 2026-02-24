@@ -116,6 +116,7 @@ struct ContentView: View {
     ### Features
 
     - **Bold**, *italic*, and ~~strikethrough~~ text
+    - ++Underline++ and ***bold italic*** formatting
     - Inline `code` snippets
 
     ### Lists
@@ -134,7 +135,6 @@ struct ContentView: View {
 
     ---
     """
-    @State private var editorMarkdown2 = ""
 
     var body: some View {
         AdaptiveNavShell(
@@ -1448,53 +1448,85 @@ struct ContentView: View {
         }
     }
 
-    // MARK: - Editor Tab
+    // MARK: - Editor Tab (Apple Notes-style full page)
+
+    @State private var showRawOutput = false
 
     private var editorTab: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: .space6) {
-                // Pre-filled editor
-                ShowcaseSection(title: "Pre-filled Editor") {
-                    AppMarkdownEditor(
-                        text: $editorMarkdown,
-                        label: "Notes",
-                        placeholder: "Start typing markdown…",
-                        hint: "Try editing — all markdown syntax is supported.",
-                        minHeight: 300
-                    )
-                }
-
-                AppDivider(type: .section)
-
-                // Empty editor
-                ShowcaseSection(title: "Empty Editor") {
-                    AppMarkdownEditor(
-                        text: $editorMarkdown2,
-                        label: "Description",
-                        placeholder: "Try ## Heading, - list item, **bold**, or ```code```",
-                        minHeight: 200
-                    )
-                }
-
-                AppDivider(type: .section)
-
-                // Raw output
-                ShowcaseSection(title: "Raw Markdown Output") {
-                    Text(editorMarkdown.isEmpty ? "(empty)" : editorMarkdown)
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundStyle(Color.typographySecondary)
-                        .padding(.space3)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color.surfacesBaseLowContrast)
-                        .clipShape(RoundedRectangle(cornerRadius: .radiusMD))
-                }
-            }
-            .padding(.horizontal, .space4)
-            .padding(.vertical, .space6)
+        VStack(spacing: 0) {
+            // Full-screen markdown editor — no label, no border, no hint
+            AppMarkdownEditor(
+                text: $editorMarkdown,
+                placeholder: "Start typing…",
+                minHeight: 200,
+                showChrome: false
+            )
         }
         .background(Color.surfacesBasePrimary)
-        .navigationTitle("Editor")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationTitle("Notes")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    // Undo action placeholder
+                } label: {
+                    Ph.arrowCounterClockwise.regular
+                        .iconSize(.md)
+                        .iconColor(.appIconPrimary)
+                }
+                .accessibilityLabel("Undo")
+            }
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button {
+                    // Share action placeholder
+                } label: {
+                    Ph.shareNetwork.regular
+                        .iconSize(.md)
+                        .iconColor(.appIconPrimary)
+                }
+                .accessibilityLabel("Share")
+
+                Button {
+                    showRawOutput.toggle()
+                } label: {
+                    Ph.code.regular
+                        .iconSize(.md)
+                        .iconColor(.appIconPrimary)
+                }
+                .accessibilityLabel("View Raw")
+
+                Button {
+                    // Done — dismiss keyboard
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                } label: {
+                    Text("Done")
+                        .font(.appBodyMediumEm)
+                        .foregroundStyle(Color.surfacesBrandInteractive)
+                }
+            }
+        }
+        .appBottomSheet(
+            isPresented: $showRawOutput,
+            detents: [.medium, .large]
+        ) {
+            VStack(alignment: .leading, spacing: .space3) {
+                HStack {
+                    Text("Raw Markdown").font(.appTitleSmall)
+                    Spacer()
+                    Button { showRawOutput = false } label: {
+                        Ph.xCircle.fill
+                            .iconSize(.md)
+                            .foregroundStyle(Color.typographyMuted)
+                    }
+                }
+                ScrollView {
+                    Text(editorMarkdown.isEmpty ? "(empty)" : editorMarkdown)
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundStyle(Color.typographySecondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
     }
 
     // MARK: - Explore Tab

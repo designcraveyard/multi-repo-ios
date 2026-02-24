@@ -31,11 +31,11 @@ class MarkdownLayoutManager: NSLayoutManager {
             let leadingSpaces = line.prefix(while: { $0 == " " || $0 == "\t" }).count
 
             switch block {
-            case .bulletList:
-                // Draw bullet dot over the invisible dash character
+            case .bulletList(let indent):
+                // Draw SF Symbol bullet over the invisible dash character
                 let dashIndex = lineRange.location + leadingSpaces
                 guard dashIndex < NSMaxRange(lineRange) else { continue }
-                drawBulletDot(at: dashIndex, origin: origin, container: container)
+                drawBulletSymbol(at: dashIndex, indent: indent, origin: origin, container: container)
 
             case .taskList(_, let checked):
                 // Draw SF Symbol checkbox over the invisible "[ ]" characters
@@ -49,24 +49,29 @@ class MarkdownLayoutManager: NSLayoutManager {
         }
     }
 
-    // MARK: - Bullet Dot
+    // MARK: - SF Symbol Bullet
 
-    private func drawBulletDot(at charIndex: Int, origin: CGPoint, container: NSTextContainer) {
+    private func drawBulletSymbol(at charIndex: Int, indent: Int, origin: CGPoint, container: NSTextContainer) {
         let glyphIndex = glyphIndexForCharacter(at: charIndex)
         var glyphRect = boundingRect(forGlyphRange: NSRange(location: glyphIndex, length: 1), in: container)
         glyphRect = glyphRect.offsetBy(dx: origin.x, dy: origin.y)
 
-        let bullet = "\u{2022}" as NSString // "•"
-        let attrs: [NSAttributedString.Key: Any] = [
-            .font: MarkdownFonts.body,
-            .foregroundColor: MarkdownColors.text,
-        ]
-        let bulletSize = bullet.size(withAttributes: attrs)
-        let bulletPoint = CGPoint(
-            x: glyphRect.midX - bulletSize.width / 2,
-            y: glyphRect.midY - bulletSize.height / 2
+        // Pick the SF Symbol based on nesting depth
+        let symbolName = MarkdownSymbols.bulletSymbol(forLevel: indent)
+        let pointSize = MarkdownSymbols.bulletSymbolSize
+        let config = UIImage.SymbolConfiguration(pointSize: pointSize, weight: .bold)
+        guard let image = UIImage(systemName: symbolName, withConfiguration: config)?
+            .withTintColor(MarkdownColors.text, renderingMode: .alwaysOriginal) else { return }
+
+        // Size the bullet image — slightly larger than the point size for visual weight
+        let imageSize: CGFloat = pointSize + 2
+        let imageRect = CGRect(
+            x: glyphRect.midX - imageSize / 2,
+            y: glyphRect.midY - imageSize / 2,
+            width: imageSize,
+            height: imageSize
         )
-        bullet.draw(at: bulletPoint, withAttributes: attrs)
+        image.draw(in: imageRect)
     }
 
     // MARK: - SF Symbol Checkbox
@@ -76,13 +81,16 @@ class MarkdownLayoutManager: NSLayoutManager {
         var cbRect = boundingRect(forGlyphRange: NSRange(location: glyphIndex, length: length), in: container)
         cbRect = cbRect.offsetBy(dx: origin.x, dy: origin.y)
 
-        let symbolName = checked ? "checkmark.circle.fill" : "circle"
+        let symbolName = checked ? MarkdownSymbols.checkboxChecked : MarkdownSymbols.checkboxUnchecked
         let symbolColor = checked ? MarkdownColors.checkboxChecked : MarkdownColors.checkboxUnchecked
-        let config = UIImage.SymbolConfiguration(pointSize: 16, weight: .regular)
+        let config = UIImage.SymbolConfiguration(
+            pointSize: MarkdownSymbols.checkboxSymbolPointSize,
+            weight: MarkdownSymbols.checkboxWeight
+        )
         guard let image = UIImage(systemName: symbolName, withConfiguration: config)?
             .withTintColor(symbolColor, renderingMode: .alwaysOriginal) else { return }
 
-        let imageSize: CGFloat = 18
+        let imageSize = MarkdownSymbols.checkboxSize
         let imageRect = CGRect(
             x: cbRect.minX,
             y: cbRect.midY - imageSize / 2,

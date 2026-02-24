@@ -1,6 +1,9 @@
 // MarkdownKeyboardToolbar.swift
 // inputAccessoryView for the markdown editor's UITextView.
 // Horizontal scrollable row of formatting buttons above the keyboard.
+//
+// Uses system material blur for a liquid glass appearance on iOS 26+.
+// Buttons are grouped by function with thin dividers between groups.
 
 import UIKit
 import SwiftUI
@@ -10,6 +13,7 @@ import SwiftUI
 enum MarkdownToolbarAction {
     case bold
     case italic
+    case underline
     case strikethrough
     case inlineCode
     case heading1
@@ -35,6 +39,7 @@ class MarkdownKeyboardToolbar: UIView {
 
     var onAction: ((MarkdownToolbarAction) -> Void)?
 
+    private let blurView = UIVisualEffectView(effect: UIBlurEffect(style: .systemChromeMaterial))
     private let scrollView = UIScrollView()
     private let stackView = UIStackView()
 
@@ -46,21 +51,33 @@ class MarkdownKeyboardToolbar: UIView {
     }
 
     private let buttons: [ButtonSpec] = [
+        // Group 1: Inline formatting
         ButtonSpec(icon: "bold", label: "Bold", action: .bold, dividerAfter: false),
         ButtonSpec(icon: "italic", label: "Italic", action: .italic, dividerAfter: false),
+        ButtonSpec(icon: "underline", label: "Underline", action: .underline, dividerAfter: false),
         ButtonSpec(icon: "strikethrough", label: "Strikethrough", action: .strikethrough, dividerAfter: false),
         ButtonSpec(icon: "chevron.left.forwardslash.chevron.right", label: "Code", action: .inlineCode, dividerAfter: true),
+
+        // Group 2: Headings
         ButtonSpec(icon: "textformat.size.larger", label: "H1", action: .heading1, dividerAfter: false),
         ButtonSpec(icon: "textformat.size", label: "H2", action: .heading2, dividerAfter: false),
         ButtonSpec(icon: "textformat.size.smaller", label: "H3", action: .heading3, dividerAfter: true),
+
+        // Group 3: Lists
         ButtonSpec(icon: "list.bullet", label: "Bullet", action: .bulletList, dividerAfter: false),
         ButtonSpec(icon: "list.number", label: "Numbered", action: .orderedList, dividerAfter: false),
         ButtonSpec(icon: "checklist", label: "Task", action: .taskList, dividerAfter: true),
+
+        // Group 4: Block elements
         ButtonSpec(icon: "text.quote", label: "Quote", action: .blockquote, dividerAfter: false),
         ButtonSpec(icon: "curlybraces", label: "Code Block", action: .codeBlock, dividerAfter: false),
         ButtonSpec(icon: "minus", label: "Divider", action: .horizontalRule, dividerAfter: true),
+
+        // Group 5: Rich elements
         ButtonSpec(icon: "tablecells", label: "Table", action: .table, dividerAfter: false),
         ButtonSpec(icon: "link", label: "Link", action: .link, dividerAfter: true),
+
+        // Group 6: Indentation
         ButtonSpec(icon: "increase.indent", label: "Indent", action: .indent, dividerAfter: false),
         ButtonSpec(icon: "decrease.indent", label: "Outdent", action: .outdent, dividerAfter: false),
     ]
@@ -68,7 +85,7 @@ class MarkdownKeyboardToolbar: UIView {
     // MARK: - Init
 
     override init(frame: CGRect) {
-        super.init(frame: CGRect(x: 0, y: 0, width: frame.width, height: 44))
+        super.init(frame: CGRect(x: 0, y: 0, width: frame.width, height: MarkdownToolbarStyling.height))
         setupUI()
     }
 
@@ -80,19 +97,29 @@ class MarkdownKeyboardToolbar: UIView {
     // MARK: - Setup
 
     private func setupUI() {
-        backgroundColor = UIColor(NativeMarkdownEditorStyling.Colors.background)
+        backgroundColor = .clear
         autoresizingMask = .flexibleWidth
 
-        // Top border
-        let border = UIView()
-        border.backgroundColor = UIColor(NativeMarkdownEditorStyling.Colors.borderFocused).withAlphaComponent(0.1)
-        border.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(border)
+        // Liquid glass blur background
+        blurView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(blurView)
         NSLayoutConstraint.activate([
-            border.topAnchor.constraint(equalTo: topAnchor),
-            border.leadingAnchor.constraint(equalTo: leadingAnchor),
-            border.trailingAnchor.constraint(equalTo: trailingAnchor),
-            border.heightAnchor.constraint(equalToConstant: 0.5),
+            blurView.topAnchor.constraint(equalTo: topAnchor),
+            blurView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            blurView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            blurView.trailingAnchor.constraint(equalTo: trailingAnchor),
+        ])
+
+        // Subtle top separator
+        let topSeparator = UIView()
+        topSeparator.backgroundColor = UIColor.separator.withAlphaComponent(0.2)
+        topSeparator.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(topSeparator)
+        NSLayoutConstraint.activate([
+            topSeparator.topAnchor.constraint(equalTo: topAnchor),
+            topSeparator.leadingAnchor.constraint(equalTo: leadingAnchor),
+            topSeparator.trailingAnchor.constraint(equalTo: trailingAnchor),
+            topSeparator.heightAnchor.constraint(equalToConstant: 0.33),
         ])
 
         // Scroll view
@@ -108,15 +135,15 @@ class MarkdownKeyboardToolbar: UIView {
 
         // Stack view
         stackView.axis = .horizontal
-        stackView.spacing = 2
+        stackView.spacing = MarkdownToolbarStyling.buttonSpacing
         stackView.alignment = .center
         stackView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(stackView)
         NSLayoutConstraint.activate([
             stackView.topAnchor.constraint(equalTo: scrollView.topAnchor),
             stackView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
-            stackView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: 8),
-            stackView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -8),
+            stackView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor, constant: MarkdownToolbarStyling.edgePadding),
+            stackView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor, constant: -MarkdownToolbarStyling.edgePadding),
             stackView.heightAnchor.constraint(equalTo: scrollView.heightAnchor),
         ])
 
@@ -134,29 +161,47 @@ class MarkdownKeyboardToolbar: UIView {
 
     private func createButton(spec: ButtonSpec) -> UIButton {
         let btn = UIButton(type: .system)
-        let config = UIImage.SymbolConfiguration(pointSize: 16, weight: .medium)
+        let config = UIImage.SymbolConfiguration(
+            pointSize: MarkdownToolbarStyling.iconPointSize,
+            weight: MarkdownToolbarStyling.iconWeight
+        )
         btn.setImage(UIImage(systemName: spec.icon, withConfiguration: config), for: .normal)
-        btn.tintColor = MarkdownColors.textSecondary
+        btn.tintColor = UIColor.label.withAlphaComponent(0.7)
         btn.accessibilityLabel = spec.label
         btn.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            btn.widthAnchor.constraint(equalToConstant: 36),
-            btn.heightAnchor.constraint(equalToConstant: 36),
+            btn.widthAnchor.constraint(equalToConstant: MarkdownToolbarStyling.buttonSize),
+            btn.heightAnchor.constraint(equalToConstant: MarkdownToolbarStyling.buttonSize),
         ])
-        btn.layer.cornerRadius = 6
+        btn.layer.cornerRadius = MarkdownToolbarStyling.buttonCornerRadius
+
+        // Highlight on touch
         btn.addAction(UIAction { [weak self] _ in
             self?.onAction?(spec.action)
         }, for: .touchUpInside)
+
+        btn.addAction(UIAction { _ in
+            UIView.animate(withDuration: 0.1) {
+                btn.backgroundColor = UIColor.label.withAlphaComponent(0.06)
+            }
+        }, for: .touchDown)
+
+        btn.addAction(UIAction { _ in
+            UIView.animate(withDuration: 0.15) {
+                btn.backgroundColor = .clear
+            }
+        }, for: [.touchUpInside, .touchUpOutside, .touchCancel])
+
         return btn
     }
 
     private func createDivider() -> UIView {
         let div = UIView()
-        div.backgroundColor = MarkdownColors.tableBorder
+        div.backgroundColor = UIColor.separator.withAlphaComponent(0.3)
         div.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            div.widthAnchor.constraint(equalToConstant: 1),
-            div.heightAnchor.constraint(equalToConstant: 24),
+            div.widthAnchor.constraint(equalToConstant: 0.5),
+            div.heightAnchor.constraint(equalToConstant: MarkdownToolbarStyling.dividerHeight),
         ])
         return div
     }

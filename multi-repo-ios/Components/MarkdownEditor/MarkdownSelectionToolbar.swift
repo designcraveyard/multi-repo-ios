@@ -1,6 +1,6 @@
 // MarkdownSelectionToolbar.swift
 // Floating toolbar that appears above text selection.
-// Shows formatting options (bold, italic, strike, code, link, headings).
+// Shows formatting options (bold, italic, underline, strike, code, link, headings).
 
 import UIKit
 import SwiftUI
@@ -26,6 +26,7 @@ class MarkdownSelectionToolbar: UIView {
     private let buttons: [ButtonSpec] = [
         ButtonSpec(icon: "bold", label: "Bold", action: .bold, dividerAfter: false),
         ButtonSpec(icon: "italic", label: "Italic", action: .italic, dividerAfter: false),
+        ButtonSpec(icon: "underline", label: "Underline", action: .underline, dividerAfter: false),
         ButtonSpec(icon: "strikethrough", label: "Strikethrough", action: .strikethrough, dividerAfter: false),
         ButtonSpec(icon: "chevron.left.forwardslash.chevron.right", label: "Code", action: .inlineCode, dividerAfter: true),
         ButtonSpec(icon: "link", label: "Link", action: .link, dividerAfter: true),
@@ -78,7 +79,6 @@ class MarkdownSelectionToolbar: UIView {
             }
         }
 
-        // Size to fit content
         setNeedsLayout()
         layoutIfNeeded()
     }
@@ -114,7 +114,6 @@ class MarkdownSelectionToolbar: UIView {
 
     // MARK: - Positioning
 
-    /// Position the toolbar centered above the given rect in the text view.
     func show(above rect: CGRect, in parentView: UIView) {
         let toolbarSize = systemLayoutSizeFitting(UIView.layoutFittingCompressedSize)
         let x = max(8, min(rect.midX - toolbarSize.width / 2, parentView.bounds.width - toolbarSize.width - 8))

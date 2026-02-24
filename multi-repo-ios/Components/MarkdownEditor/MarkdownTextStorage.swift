@@ -87,11 +87,12 @@ class MarkdownTextStorage: NSTextStorage {
         let fullRange = NSRange(location: 0, length: length)
         guard fullRange.length > 0 else { return }
 
-        // Reset to default body style
+        // Reset to default body style with 24pt line height
         let defaultAttrs: [NSAttributedString.Key: Any] = [
             .font: MarkdownFonts.body,
             .foregroundColor: MarkdownColors.text,
             .paragraphStyle: defaultParagraphStyle(),
+            .baselineOffset: MarkdownLayout.bodyBaselineOffset,
         ]
         backing.setAttributes(defaultAttrs, range: fullRange)
 
@@ -107,6 +108,27 @@ class MarkdownTextStorage: NSTextStorage {
         applyInlineFormatting()
     }
 
+    // MARK: - Typing Attributes
+
+    /// Returns appropriate typing attributes for the cursor at the given position.
+    /// Used to fix cursor height: body lines get body font, heading lines get heading font.
+    func typingAttributes(at position: Int) -> [NSAttributedString.Key: Any] {
+        var font: UIFont = MarkdownFonts.body
+        for (lineRange, block) in lineBlocks {
+            if position >= lineRange.location && position <= NSMaxRange(lineRange) {
+                if case .heading(let level) = block {
+                    font = MarkdownFonts.heading(level: level)
+                }
+                break
+            }
+        }
+        return [
+            .font: font,
+            .foregroundColor: MarkdownColors.text,
+            .paragraphStyle: defaultParagraphStyle(),
+        ]
+    }
+
     // MARK: - Line Classification
 
     private func classifyLines() -> [(range: NSRange, block: MarkdownBlockType)] {
@@ -116,7 +138,6 @@ class MarkdownTextStorage: NSTextStorage {
 
         nsString.enumerateSubstrings(in: NSRange(location: 0, length: nsString.length), options: [.byLines, .substringNotRequired]) { _, lineRange, _, _ in
             let line = nsString.substring(with: lineRange)
-            // Strip leading whitespace only — preserve trailing spaces for trigger detection
             let stripped = String(line.drop(while: { $0 == " " || $0 == "\t" }))
 
             // Code fence toggle
@@ -148,7 +169,7 @@ class MarkdownTextStorage: NSTextStorage {
                 return
             }
 
-            // Indent level from the original line (counts leading spaces)
+            // Indent level from the original line
             let indent = Self.indentLevel(line)
 
             // Task list (before bullet, since task starts with "- [")
@@ -259,7 +280,7 @@ class MarkdownTextStorage: NSTextStorage {
 
         switch block {
         case .heading(let level):
-            let font = headingFont(level: level)
+            let font = MarkdownFonts.heading(level: level)
             let para = NSMutableParagraphStyle()
             para.paragraphSpacingBefore = MarkdownLayout.headingSpacingBefore
             para.paragraphSpacing = MarkdownLayout.headingSpacingAfter
@@ -268,6 +289,7 @@ class MarkdownTextStorage: NSTextStorage {
                 .font: font,
                 .foregroundColor: MarkdownColors.text,
                 .paragraphStyle: para,
+                .baselineOffset: 0,
             ], range: range)
 
             let prefixLen = Self.headingPrefixLength(line)
@@ -281,20 +303,26 @@ class MarkdownTextStorage: NSTextStorage {
             let para = listParagraphStyle(indent: indent)
             backing.addAttribute(.paragraphStyle, value: para, range: range)
 
-            // Make the dash/marker invisible — MarkdownLayoutManager draws "•" on top
+            // Make the dash/marker invisible — MarkdownLayoutManager draws SF Symbol bullet on top
             let prefixLen = leadingSpaces + 2 // "- " or "* " or "+ "
             if prefixLen <= range.length {
                 backing.addAttributes(Self.invisibleAttrs, range: NSRange(location: range.location, length: prefixLen))
+                // Add kern after the last invisible char to ensure 8pt spacing to text
+                let lastInvisibleIdx = range.location + prefixLen - 1
+                backing.addAttribute(.kern, value: MarkdownLayout.listMarkerTextSpacing, range: NSRange(location: lastInvisibleIdx, length: 1))
             }
 
         case .orderedList(let indent, let num):
             let para = listParagraphStyle(indent: indent)
             backing.addAttribute(.paragraphStyle, value: para, range: range)
 
-            // Number prefix in primary text color (not muted)
+            // Number prefix in primary text color
             let prefixLen = leadingSpaces + String(num).count + 2 // "1. "
             if prefixLen <= range.length {
                 backing.addAttribute(.foregroundColor, value: MarkdownColors.text, range: NSRange(location: range.location, length: prefixLen))
+                // Add kern after the number prefix for consistent spacing
+                let lastPrefixIdx = range.location + prefixLen - 1
+                backing.addAttribute(.kern, value: MarkdownLayout.listMarkerTextSpacing - 4, range: NSRange(location: lastPrefixIdx, length: 1))
             }
 
         case .taskList(let indent, let checked):
@@ -314,10 +342,13 @@ class MarkdownTextStorage: NSTextStorage {
                 backing.addAttributes(Self.invisibleAttrs, range: NSRange(location: cbStart, length: cbLen))
             }
 
-            // Hide the space after checkbox
+            // Space after checkbox — keep visible width but add kern for 8pt spacing
             let spaceAfterCB = cbStart + cbLen
             if spaceAfterCB < NSMaxRange(range) {
-                backing.addAttributes(Self.hiddenAttrs, range: NSRange(location: spaceAfterCB, length: 1))
+                backing.addAttributes([
+                    .foregroundColor: UIColor.clear,
+                    .kern: MarkdownLayout.listMarkerTextSpacing,
+                ], range: NSRange(location: spaceAfterCB, length: 1))
             }
 
             // Strikethrough + muted for checked task content
@@ -379,7 +410,6 @@ class MarkdownTextStorage: NSTextStorage {
             ], range: range)
 
         case .tableRow:
-            // Detect header row: first tableRow before a tableSeparator
             let isHeader = index + 1 < lineBlocks.count && lineBlocks[index + 1].block == .tableSeparator
             let font = isHeader ? MarkdownFonts.bodyBold : MarkdownFonts.body
 
@@ -389,13 +419,11 @@ class MarkdownTextStorage: NSTextStorage {
                 backing.addAttribute(.backgroundColor, value: MarkdownColors.tableHeaderBackground, range: range)
             }
 
-            // Style pipe characters
             for (i, ch) in line.enumerated() where ch == "|" {
                 backing.addAttribute(.foregroundColor, value: MarkdownColors.tableBorder, range: NSRange(location: range.location + i, length: 1))
             }
 
         case .tableSeparator:
-            // Make separator row small and subtle
             backing.addAttributes([
                 .font: UIFont.systemFont(ofSize: 6),
                 .foregroundColor: MarkdownColors.tableBorder.withAlphaComponent(0.3),
@@ -449,20 +477,30 @@ class MarkdownTextStorage: NSTextStorage {
             codeRanges.contains { NSIntersectionRange($0, range).length > 0 }
         }
 
-        // Bold: **text** or __text__
-        applyInlineHidden(nsText: nsText, pattern: "\\*\\*(.+?)\\*\\*", markerLen: 2, isInCodeBlock: isInCodeBlock) { contentRange in
+        // Bold+Italic: ***text*** — MUST come before bold and italic
+        applyInlineHidden(nsText: nsText, pattern: "\\*\\*\\*(.+?)\\*\\*\\*", markerLen: 3, isInCodeBlock: isInCodeBlock) { contentRange in
+            self.backing.addAttribute(.font, value: MarkdownFonts.bodyBoldItalic, range: contentRange)
+        }
+
+        // Bold: **text** or __text__ (not preceded/followed by extra *)
+        applyInlineHidden(nsText: nsText, pattern: "(?<!\\*)\\*\\*(?!\\*)(.+?)(?<!\\*)\\*\\*(?!\\*)", markerLen: 2, isInCodeBlock: isInCodeBlock) { contentRange in
             self.backing.addAttribute(.font, value: MarkdownFonts.bodyBold, range: contentRange)
         }
-        applyInlineHidden(nsText: nsText, pattern: "__(.+?)__", markerLen: 2, isInCodeBlock: isInCodeBlock) { contentRange in
+        applyInlineHidden(nsText: nsText, pattern: "(?<!_)__(?!_)(.+?)(?<!_)__(?!_)", markerLen: 2, isInCodeBlock: isInCodeBlock) { contentRange in
             self.backing.addAttribute(.font, value: MarkdownFonts.bodyBold, range: contentRange)
         }
 
-        // Italic: *text* or _text_ (not bold)
+        // Italic: *text* or _text_ (not preceded/followed by extra *)
         applyInlineHidden(nsText: nsText, pattern: "(?<!\\*)\\*(?!\\*)(.+?)(?<!\\*)\\*(?!\\*)", markerLen: 1, isInCodeBlock: isInCodeBlock) { contentRange in
             self.backing.addAttribute(.font, value: MarkdownFonts.bodyItalic, range: contentRange)
         }
         applyInlineHidden(nsText: nsText, pattern: "(?<!_)_(?!_)(.+?)(?<!_)_(?!_)", markerLen: 1, isInCodeBlock: isInCodeBlock) { contentRange in
             self.backing.addAttribute(.font, value: MarkdownFonts.bodyItalic, range: contentRange)
+        }
+
+        // Underline: ++text++ — extended markdown syntax
+        applyInlineHidden(nsText: nsText, pattern: "\\+\\+(.+?)\\+\\+", markerLen: 2, isInCodeBlock: isInCodeBlock) { contentRange in
+            self.backing.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: contentRange)
         }
 
         // Strikethrough: ~~text~~
@@ -530,10 +568,12 @@ class MarkdownTextStorage: NSTextStorage {
 
     // MARK: - Paragraph Style Helpers
 
-    private func defaultParagraphStyle() -> NSMutableParagraphStyle {
+    func defaultParagraphStyle() -> NSMutableParagraphStyle {
         let para = NSMutableParagraphStyle()
         para.paragraphSpacing = MarkdownLayout.paragraphSpacing
-        para.lineSpacing = 2
+        // Fixed 24pt line height for body text
+        para.minimumLineHeight = MarkdownLayout.bodyLineHeight
+        para.maximumLineHeight = MarkdownLayout.bodyLineHeight
         return para
     }
 
@@ -542,19 +582,10 @@ class MarkdownTextStorage: NSTextStorage {
         let indentPt = CGFloat(indent + 1) * MarkdownLayout.listIndentPerLevel
         para.firstLineHeadIndent = indentPt - MarkdownLayout.listIndentPerLevel
         para.headIndent = indentPt
-        para.paragraphSpacing = 2
+        para.paragraphSpacing = MarkdownLayout.listItemSpacing
+        para.minimumLineHeight = MarkdownLayout.bodyLineHeight
+        para.maximumLineHeight = MarkdownLayout.bodyLineHeight
         para.tabStops = [NSTextTab(textAlignment: .left, location: indentPt)]
         return para
-    }
-
-    private func headingFont(level: Int) -> UIFont {
-        switch level {
-        case 1: return MarkdownFonts.h1
-        case 2: return MarkdownFonts.h2
-        case 3: return MarkdownFonts.h3
-        case 4: return MarkdownFonts.h4
-        case 5: return MarkdownFonts.h5
-        default: return MarkdownFonts.h6
-        }
     }
 }

@@ -27,6 +27,7 @@ public struct AppMarkdownEditor: View {
     var minHeight: CGFloat
     var maxHeight: CGFloat?
     var isDisabled: Bool
+    var showChrome: Bool
 
     @State private var isFocused = false
     @State private var editorHeight: CGFloat = 200
@@ -41,7 +42,8 @@ public struct AppMarkdownEditor: View {
         hint: String? = nil,
         minHeight: CGFloat = 200,
         maxHeight: CGFloat? = nil,
-        isDisabled: Bool = false
+        isDisabled: Bool = false,
+        showChrome: Bool = true
     ) {
         self._text = text
         self.label = label
@@ -51,11 +53,22 @@ public struct AppMarkdownEditor: View {
         self.minHeight = minHeight
         self.maxHeight = maxHeight
         self.isDisabled = isDisabled
+        self.showChrome = showChrome
     }
 
     // MARK: - Body
 
     public var body: some View {
+        if showChrome {
+            chromeWrapped
+        } else {
+            bareEditor
+        }
+    }
+
+    // MARK: - Chrome-Wrapped Editor (with label, border, hint)
+
+    private var chromeWrapped: some View {
         VStack(alignment: .leading, spacing: NativeMarkdownEditorStyling.Layout.labelSpacing) {
             // Label
             if let label {
@@ -91,6 +104,24 @@ public struct AppMarkdownEditor: View {
                     .foregroundStyle(hintColor)
             }
         }
+        .opacity(isDisabled ? 0.5 : 1.0)
+        .allowsHitTesting(!isDisabled)
+    }
+
+    // MARK: - Bare Editor (no chrome — for full-page Notes-like usage)
+
+    private var bareEditor: some View {
+        MarkdownEditorRepresentable(
+            text: $text,
+            isFocused: $isFocused,
+            placeholder: placeholder,
+            isDisabled: isDisabled,
+            minHeight: minHeight,
+            onHeightChange: { newHeight in
+                editorHeight = newHeight
+            }
+        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .opacity(isDisabled ? 0.5 : 1.0)
         .allowsHitTesting(!isDisabled)
     }
@@ -166,8 +197,8 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
         textView.autocapitalizationType = UITextAutocapitalizationType.sentences
         textView.keyboardDismissMode = UIScrollView.KeyboardDismissMode.interactive
 
-        // Keyboard toolbar
-        let toolbar = MarkdownKeyboardToolbar(frame: CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width, height: 44))
+        // Keyboard toolbar with liquid glass
+        let toolbar = MarkdownKeyboardToolbar(frame: CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width, height: MarkdownToolbarStyling.height))
         toolbar.onAction = { action in
             context.coordinator.handleToolbarAction(action, in: textView)
         }
@@ -240,6 +271,11 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
             isUpdating = false
             updatePlaceholder(textView)
             updateContentHeight(textView)
+
+            // Fix cursor height: set typing attributes to match current line block type
+            if let storage = textStorage {
+                textView.typingAttributes = storage.typingAttributes(at: textView.selectedRange.location)
+            }
         }
 
         func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
@@ -248,6 +284,10 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
                 DispatchQueue.main.async { [weak self] in
                     self?.parent.text = textView.textStorage.string
                     self?.updatePlaceholder(textView)
+                    // Reset typing attributes after Enter/Tab for correct cursor height
+                    if let storage = self?.textStorage {
+                        textView.typingAttributes = storage.typingAttributes(at: textView.selectedRange.location)
+                    }
                 }
                 return false
             }
@@ -263,18 +303,39 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
             parent.isFocused = false
         }
 
+        func textViewDidChangeSelection(_ textView: UITextView) {
+            // Update typing attributes when cursor moves to match current line type
+            if let storage = textStorage {
+                textView.typingAttributes = storage.typingAttributes(at: textView.selectedRange.location)
+            }
+        }
+
         // MARK: - Native Edit Menu (iOS 16+)
+        // Formatting options appear FIRST, then standard actions.
+        // Select All is always available.
 
         func textView(_ textView: UITextView, editMenuForTextIn range: NSRange, suggestedActions: [UIMenuElement]) -> UIMenu? {
-            guard range.length > 0 else { return UIMenu(children: suggestedActions) }
+            // Select All action — always available
+            let selectAllAction = UIAction(title: "Select All", image: UIImage(systemName: "selection.pin.in.out")) { _ in
+                textView.selectAll(nil)
+            }
+            let selectAllMenu = UIMenu(title: "", options: .displayInline, children: [selectAllAction])
 
-            // Inline formatting actions
+            // If no text is selected, show Select All + standard actions
+            guard range.length > 0 else {
+                return UIMenu(children: [selectAllMenu] + suggestedActions)
+            }
+
+            // Inline formatting actions — shown FIRST
             let formatActions = UIMenu(title: "", options: .displayInline, children: [
                 UIAction(title: "Bold", image: UIImage(systemName: "bold")) { [weak self] _ in
                     self?.handleToolbarAction(.bold, in: textView)
                 },
                 UIAction(title: "Italic", image: UIImage(systemName: "italic")) { [weak self] _ in
                     self?.handleToolbarAction(.italic, in: textView)
+                },
+                UIAction(title: "Underline", image: UIImage(systemName: "underline")) { [weak self] _ in
+                    self?.handleToolbarAction(.underline, in: textView)
                 },
                 UIAction(title: "Strikethrough", image: UIImage(systemName: "strikethrough")) { [weak self] _ in
                     self?.handleToolbarAction(.strikethrough, in: textView)
@@ -300,7 +361,8 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
                 },
             ])
 
-            return UIMenu(children: suggestedActions + [formatActions, headingMenu])
+            // Formatting first, then headings, then Select All, then system actions
+            return UIMenu(children: [formatActions, headingMenu, selectAllMenu] + suggestedActions)
         }
 
         // MARK: - Checkbox Tap Gesture
@@ -358,13 +420,15 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
 
             switch action {
             case .bold:
-                wrapSelection(textView: textView, prefix: "**", suffix: "**")
+                toggleWrap(textView: textView, prefix: "**", suffix: "**")
             case .italic:
-                wrapSelection(textView: textView, prefix: "*", suffix: "*")
+                toggleWrap(textView: textView, prefix: "*", suffix: "*")
+            case .underline:
+                toggleWrap(textView: textView, prefix: "++", suffix: "++")
             case .strikethrough:
-                wrapSelection(textView: textView, prefix: "~~", suffix: "~~")
+                toggleWrap(textView: textView, prefix: "~~", suffix: "~~")
             case .inlineCode:
-                wrapSelection(textView: textView, prefix: "`", suffix: "`")
+                toggleWrap(textView: textView, prefix: "`", suffix: "`")
             case .heading1:
                 insertLinePrefix(textView: textView, prefix: "# ", storage: storage)
             case .heading2:
@@ -422,18 +486,49 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
             }
         }
 
-        // MARK: - Text Manipulation Helpers
+        // MARK: - Toggle Wrap (Bold/Italic/Underline/Strikethrough/Code)
+        // If already wrapped, unwrap. Otherwise, wrap.
 
-        private func wrapSelection(textView: UITextView, prefix: String, suffix: String) {
+        private func toggleWrap(textView: UITextView, prefix: String, suffix: String) {
             guard let storage = textStorage else { return }
             let range = textView.selectedRange
 
             if range.length > 0 {
-                let selectedText = (storage.string as NSString).substring(with: range)
+                let nsString = storage.string as NSString
+                let selectedText = nsString.substring(with: range)
+
+                // Check if the surrounding text already has the markers → unwrap
+                let beforeStart = range.location - prefix.count
+                let afterEnd = NSMaxRange(range)
+
+                if beforeStart >= 0 && afterEnd + suffix.count <= nsString.length {
+                    let before = nsString.substring(with: NSRange(location: beforeStart, length: prefix.count))
+                    let after = nsString.substring(with: NSRange(location: afterEnd, length: suffix.count))
+
+                    if before == prefix && after == suffix {
+                        // Unwrap: remove suffix first (so offsets stay valid), then prefix
+                        storage.replaceCharacters(in: NSRange(location: afterEnd, length: suffix.count), with: "")
+                        storage.replaceCharacters(in: NSRange(location: beforeStart, length: prefix.count), with: "")
+                        textView.selectedRange = NSRange(location: beforeStart, length: range.length)
+                        return
+                    }
+                }
+
+                // Check if selection includes the markers → unwrap
+                if selectedText.hasPrefix(prefix) && selectedText.hasSuffix(suffix) &&
+                   selectedText.count > prefix.count + suffix.count {
+                    let inner = String(selectedText.dropFirst(prefix.count).dropLast(suffix.count))
+                    storage.replaceCharacters(in: range, with: inner)
+                    textView.selectedRange = NSRange(location: range.location, length: inner.count)
+                    return
+                }
+
+                // Wrap the selection
                 let replacement = prefix + selectedText + suffix
                 storage.replaceCharacters(in: range, with: replacement)
                 textView.selectedRange = NSRange(location: range.location + prefix.count, length: selectedText.count)
             } else {
+                // No selection: insert markers and place cursor between
                 let insertion = prefix + suffix
                 storage.replaceCharacters(in: range, with: insertion)
                 textView.selectedRange = NSRange(location: range.location + prefix.count, length: 0)
