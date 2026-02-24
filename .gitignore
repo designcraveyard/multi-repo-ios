@@ -1,0 +1,16 @@
+# Xcode user data
+xcuserdata/
+*.xcuserstate
+
+# Xcode shared schemes (may contain environment variables with secrets)
+*.xcodeproj/xcshareddata/xcschemes/
+
+# Build products
+build/
+DerivedData/
+
+# OS
+.DS_Store
+
+# CocoaPods (if used later)
+Pods/
