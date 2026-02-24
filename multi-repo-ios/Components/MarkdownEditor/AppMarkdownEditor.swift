@@ -151,6 +151,30 @@ public struct AppMarkdownEditor: View {
     }
 }
 
+// MARK: - MarkdownTextView (UITextView subclass with keyboard shortcuts)
+
+class MarkdownTextView: UITextView {
+
+    /// Callback for toolbar actions triggered by keyboard shortcuts.
+    var onKeyboardAction: ((MarkdownToolbarAction) -> Void)?
+
+    override var keyCommands: [UIKeyCommand]? {
+        return [
+            UIKeyCommand(input: "b", modifierFlags: .command, action: #selector(cmdBold)),
+            UIKeyCommand(input: "i", modifierFlags: .command, action: #selector(cmdItalic)),
+            UIKeyCommand(input: "u", modifierFlags: .command, action: #selector(cmdUnderline)),
+            UIKeyCommand(input: "k", modifierFlags: .command, action: #selector(cmdLink)),
+            UIKeyCommand(input: "\t", modifierFlags: .shift, action: #selector(cmdOutdent)),
+        ]
+    }
+
+    @objc private func cmdBold() { onKeyboardAction?(.bold) }
+    @objc private func cmdItalic() { onKeyboardAction?(.italic) }
+    @objc private func cmdUnderline() { onKeyboardAction?(.underline) }
+    @objc private func cmdLink() { onKeyboardAction?(.link) }
+    @objc private func cmdOutdent() { onKeyboardAction?(.outdent) }
+}
+
 // MARK: - UIViewRepresentable
 
 struct MarkdownEditorRepresentable: UIViewRepresentable {
@@ -169,7 +193,7 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
     func makeUIView(context: Context) -> UITextView {
         let textStorage = MarkdownTextStorage()
 
-        // Custom layout manager that draws bullets and checkboxes
+        // Custom layout manager that draws bullets, checkboxes, tables, blockquote bars
         let layoutManager = MarkdownLayoutManager()
         layoutManager.markdownStorage = textStorage
 
@@ -178,7 +202,7 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
         layoutManager.addTextContainer(container)
         textStorage.addLayoutManager(layoutManager)
 
-        let textView = UITextView(frame: .zero, textContainer: container)
+        let textView = MarkdownTextView(frame: .zero, textContainer: container)
         textView.delegate = context.coordinator
         textView.isScrollEnabled = true
         textView.isEditable = !isDisabled
@@ -197,12 +221,27 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
         textView.autocapitalizationType = UITextAutocapitalizationType.sentences
         textView.keyboardDismissMode = UIScrollView.KeyboardDismissMode.interactive
 
-        // Keyboard toolbar with liquid glass
-        let toolbar = MarkdownKeyboardToolbar(frame: CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width, height: MarkdownToolbarStyling.height))
-        toolbar.onAction = { action in
-            context.coordinator.handleToolbarAction(action, in: textView)
+        // Keyboard shortcuts (Cmd+B, Cmd+I, etc.)
+        let coordinator = context.coordinator
+        textView.onKeyboardAction = { [weak coordinator] action in
+            guard let coordinator else { return }
+            coordinator.handleToolbarAction(action, in: textView)
         }
-        textView.inputAccessoryView = toolbar
+
+        let isIPad = UIDevice.current.userInterfaceIdiom == .pad
+
+        if isIPad {
+            // iPad: floating pill toolbar (not inputAccessoryView)
+            // Set up in coordinator after textView is in the view hierarchy
+            context.coordinator.setupFloatingToolbar(for: textView)
+        } else {
+            // iPhone: standard keyboard toolbar
+            let toolbar = MarkdownKeyboardToolbar(frame: CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width, height: MarkdownToolbarStyling.height))
+            toolbar.onAction = { action in
+                context.coordinator.handleToolbarAction(action, in: textView)
+            }
+            textView.inputAccessoryView = toolbar
+        }
 
         // Tap gesture for checkbox toggling
         let tapGesture = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleCheckboxTap(_:)))
@@ -258,8 +297,79 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
         var isUpdating = false
         private var placeholderLabel: UILabel?
 
+        // iPad floating toolbar
+        private var floatingToolbar: MarkdownKeyboardToolbar?
+        private var floatingToolbarBottomConstraint: NSLayoutConstraint?
+
         init(_ parent: MarkdownEditorRepresentable) {
             self.parent = parent
+        }
+
+        deinit {
+            NotificationCenter.default.removeObserver(self)
+        }
+
+        // MARK: - Floating Toolbar (iPad)
+
+        func setupFloatingToolbar(for textView: UITextView) {
+            let toolbar = MarkdownKeyboardToolbar(frame: .zero)
+            toolbar.onAction = { [weak self] action in
+                guard let self, let tv = self.textView else { return }
+                self.handleToolbarAction(action, in: tv)
+            }
+            toolbar.translatesAutoresizingMaskIntoConstraints = false
+            toolbar.alpha = 0
+            toolbar.layer.cornerRadius = 22
+            toolbar.clipsToBounds = true
+            toolbar.layer.shadowColor = UIColor.black.cgColor
+            toolbar.layer.shadowOpacity = 0.12
+            toolbar.layer.shadowOffset = CGSize(width: 0, height: 2)
+            toolbar.layer.shadowRadius = 8
+            toolbar.layer.masksToBounds = false
+
+            textView.addSubview(toolbar)
+
+            let bottomConstraint = toolbar.bottomAnchor.constraint(equalTo: textView.bottomAnchor, constant: -16)
+            NSLayoutConstraint.activate([
+                toolbar.centerXAnchor.constraint(equalTo: textView.centerXAnchor),
+                toolbar.heightAnchor.constraint(equalToConstant: MarkdownToolbarStyling.height),
+                toolbar.widthAnchor.constraint(lessThanOrEqualTo: textView.widthAnchor, constant: -32),
+                bottomConstraint,
+            ])
+
+            self.floatingToolbar = toolbar
+            self.floatingToolbarBottomConstraint = bottomConstraint
+
+            // Listen for keyboard events
+            NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow(_:)), name: UIResponder.keyboardWillShowNotification, object: nil)
+            NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide(_:)), name: UIResponder.keyboardWillHideNotification, object: nil)
+        }
+
+        @objc private func keyboardWillShow(_ notification: Notification) {
+            guard let toolbar = floatingToolbar,
+                  let textView = textView,
+                  let userInfo = notification.userInfo,
+                  let keyboardFrame = userInfo[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
+                  let duration = userInfo[UIResponder.keyboardAnimationDurationUserInfoKey] as? TimeInterval else { return }
+
+            let keyboardTop = textView.bounds.height - textView.convert(keyboardFrame, from: nil).origin.y
+            let offset = max(keyboardTop + 12, 16)
+            floatingToolbarBottomConstraint?.constant = -offset
+
+            UIView.animate(withDuration: duration) {
+                toolbar.alpha = 1
+                textView.layoutIfNeeded()
+            }
+        }
+
+        @objc private func keyboardWillHide(_ notification: Notification) {
+            guard let toolbar = floatingToolbar,
+                  let userInfo = notification.userInfo,
+                  let duration = userInfo[UIResponder.keyboardAnimationDurationUserInfoKey] as? TimeInterval else { return }
+
+            UIView.animate(withDuration: duration) {
+                toolbar.alpha = 0
+            }
         }
 
         // MARK: - UITextViewDelegate
@@ -454,17 +564,8 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
                 let insertion = lineEnd == storage.length ? "\n---\n" : "---\n"
                 storage.replaceCharacters(in: NSRange(location: lineEnd, length: 0), with: insertion)
             case .link:
-                if range.length > 0 {
-                    let selectedText = (storage.string as NSString).substring(with: range)
-                    let replacement = "[\(selectedText)](url)"
-                    storage.replaceCharacters(in: range, with: replacement)
-                    let urlStart = range.location + selectedText.count + 2
-                    textView.selectedRange = NSRange(location: urlStart, length: 3)
-                } else {
-                    let insertion = "[text](url)"
-                    storage.replaceCharacters(in: range, with: insertion)
-                    textView.selectedRange = NSRange(location: range.location + 1, length: 4)
-                }
+                showLinkPopover(textView: textView, storage: storage, range: range)
+                return // Don't sync text immediately — alert handles it
             case .table:
                 let table = "| Column 1 | Column 2 | Column 3 |\n| --- | --- | --- |\n| | | |\n"
                 storage.replaceCharacters(in: range, with: table)
@@ -552,6 +653,55 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
 
             storage.replaceCharacters(in: NSRange(location: lineRange.location, length: 0), with: prefix)
             textView.selectedRange = NSRange(location: textView.selectedRange.location + prefix.count, length: 0)
+        }
+
+        // MARK: - Link Popover
+
+        private func showLinkPopover(textView: UITextView, storage: MarkdownTextStorage, range: NSRange) {
+            guard let viewController = textView.window?.rootViewController?.presentedViewController
+                    ?? textView.window?.rootViewController else { return }
+
+            let selectedText = range.length > 0
+                ? (storage.string as NSString).substring(with: range)
+                : ""
+
+            let alert = UIAlertController(title: "Add Link", message: nil, preferredStyle: .alert)
+            alert.addTextField { tf in
+                tf.placeholder = "Display text"
+                tf.text = selectedText
+                tf.autocapitalizationType = .sentences
+            }
+            alert.addTextField { tf in
+                tf.placeholder = "https://..."
+                tf.keyboardType = .URL
+                tf.autocapitalizationType = .none
+                tf.autocorrectionType = .no
+            }
+
+            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+            alert.addAction(UIAlertAction(title: "Add", style: .default) { [weak self] _ in
+                let displayText = alert.textFields?[0].text ?? "link"
+                let url = alert.textFields?[1].text ?? ""
+                guard !url.isEmpty else { return }
+
+                let markdown = "[\(displayText)](\(url))"
+                storage.replaceCharacters(in: range, with: markdown)
+                textView.selectedRange = NSRange(location: range.location + markdown.count, length: 0)
+
+                DispatchQueue.main.async {
+                    self?.parent.text = textView.textStorage.string
+                    self?.updatePlaceholder(textView)
+                }
+            })
+
+            // On iPad, present as popover anchored to the text view
+            if let popover = alert.popoverPresentationController {
+                popover.sourceView = textView
+                let caretRect = textView.caretRect(for: textView.selectedTextRange?.start ?? textView.beginningOfDocument)
+                popover.sourceRect = caretRect
+            }
+
+            viewController.present(alert, animated: true)
         }
 
         // MARK: - Placeholder

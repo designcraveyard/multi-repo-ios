@@ -157,8 +157,39 @@ After adding supabase-swift SPM package, uncomment the `import Supabase` and cli
 
 ---
 
+## Authentication
+
+Auth gate in `multi_repo_iosApp.swift` — app shows `LoginView` until authenticated.
+
+**Key files:**
+- `Auth/AuthManager.swift` — `@Observable @MainActor` class: auth state listener, Google/Apple/Email sign-in, profile fetch
+- `Views/Auth/LoginView.swift` — Login screen (green hero + email/password + social buttons)
+- `Models/ProfileModel.swift` — `Codable` struct matching `profiles` table
+
+**Auth gate pattern:**
+```swift
+if authManager.isLoading { AppProgressLoader() }
+else if authManager.currentUser != nil { ContentView() }
+else { LoginView() }
+```
+
+**Providers:** Google (GoogleSignIn-iOS SDK), Apple (native `SignInWithAppleButton`), Email/Password
+
+**SPM packages required for auth:**
+- `supabase-swift` — `https://github.com/supabase/supabase-swift` (Up To Next Major from 2.0.0)
+- `GoogleSignIn-iOS` — `https://github.com/google/GoogleSignIn-iOS` (Up To Next Major from 8.0.0)
+
+**Usage in views:**
+```swift
+@Environment(AuthManager.self) private var authManager
+// authManager.currentUser, authManager.profile
+```
+
+---
+
 ## Screens / Views
 
-- `ContentView.swift` — Main view (placeholder)
+- `Views/Auth/LoginView.swift` — Login screen
+- `ContentView.swift` — Main view (shown after auth)
 
 _Add new `*View.swift` entries here as features are added via `/cross-platform-feature` or `/new-screen`._

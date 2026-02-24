@@ -111,12 +111,6 @@ struct MarkdownInputProcessor {
         let line = nsString.substring(with: lineRange)
         let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        // Only indent/outdent in lists
-        let isList = trimmed.hasPrefix("- ") || trimmed.hasPrefix("* ") || trimmed.hasPrefix("+ ") ||
-                     matchOrderedList(trimmed) != nil || matchTaskList(trimmed) != nil
-
-        guard isList else { return false }
-
         if reverse {
             // Remove 2 spaces from beginning if present
             if line.hasPrefix("  ") {

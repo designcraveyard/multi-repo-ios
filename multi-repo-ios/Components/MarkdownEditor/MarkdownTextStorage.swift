@@ -11,6 +11,15 @@
 
 import UIKit
 
+// MARK: - Custom Attributed String Keys
+
+extension NSAttributedString.Key {
+    /// Number of columns in a table row (Int).
+    static let tableColumnCount = NSAttributedString.Key("md.tableColumnCount")
+    /// Whether this table row is the header row (Bool).
+    static let tableIsHeader = NSAttributedString.Key("md.tableIsHeader")
+}
+
 // MARK: - Block Type
 
 enum MarkdownBlockType: Equatable {
@@ -271,6 +280,16 @@ class MarkdownTextStorage: NSTextStorage {
         return (clean == "---" || clean == "***" || clean == "___") && stripped.count >= 3
     }
 
+    /// Parse a markdown table row into cell strings.
+    /// "| A | B | C |" → ["A", "B", "C"]
+    static func parseTableCells(_ line: String) -> [String] {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard trimmed.hasPrefix("|") && trimmed.hasSuffix("|") else { return [] }
+        let inner = String(trimmed.dropFirst().dropLast())
+        return inner.split(separator: "|", omittingEmptySubsequences: false)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+    }
+
     // MARK: - Block Style Application
 
     private func applyBlockStyle(range: NSRange, block: MarkdownBlockType, index: Int) {
@@ -303,57 +322,48 @@ class MarkdownTextStorage: NSTextStorage {
             let para = listParagraphStyle(indent: indent)
             backing.addAttribute(.paragraphStyle, value: para, range: range)
 
-            // Make the dash/marker invisible — MarkdownLayoutManager draws SF Symbol bullet on top
+            // Collapse the dash/marker to zero-width — MarkdownLayoutManager draws SF Symbol bullet
+            // at a calculated position. Using hiddenAttrs ensures first-line text starts at the
+            // paragraph indent, matching wrapped lines exactly.
             let prefixLen = leadingSpaces + 2 // "- " or "* " or "+ "
             if prefixLen <= range.length {
-                backing.addAttributes(Self.invisibleAttrs, range: NSRange(location: range.location, length: prefixLen))
-                // Add kern after the last invisible char to ensure 8pt spacing to text
-                let lastInvisibleIdx = range.location + prefixLen - 1
-                backing.addAttribute(.kern, value: MarkdownLayout.listMarkerTextSpacing, range: NSRange(location: lastInvisibleIdx, length: 1))
+                backing.addAttributes(Self.hiddenAttrs, range: NSRange(location: range.location, length: prefixLen))
             }
 
         case .orderedList(let indent, let num):
             let para = listParagraphStyle(indent: indent)
             backing.addAttribute(.paragraphStyle, value: para, range: range)
 
-            // Number prefix in primary text color
+            // Hide leading spaces, keep number visible at the margin
+            if leadingSpaces > 0 {
+                backing.addAttributes(Self.hiddenAttrs, range: NSRange(location: range.location, length: leadingSpaces))
+            }
+            // The number + ". " is visible and drawn by MarkdownLayoutManager at calculated position
             let prefixLen = leadingSpaces + String(num).count + 2 // "1. "
             if prefixLen <= range.length {
-                backing.addAttribute(.foregroundColor, value: MarkdownColors.text, range: NSRange(location: range.location, length: prefixLen))
-                // Add kern after the number prefix for consistent spacing
-                let lastPrefixIdx = range.location + prefixLen - 1
-                backing.addAttribute(.kern, value: MarkdownLayout.listMarkerTextSpacing - 4, range: NSRange(location: lastPrefixIdx, length: 1))
+                // Collapse the entire prefix — MarkdownLayoutManager draws the number
+                backing.addAttributes(Self.hiddenAttrs, range: NSRange(location: range.location, length: prefixLen))
             }
 
         case .taskList(let indent, let checked):
             let para = listParagraphStyle(indent: indent)
             backing.addAttribute(.paragraphStyle, value: para, range: range)
 
-            // Make "- " prefix invisible
+            // Collapse entire prefix "- [ ] " or "- [x] " to zero-width.
+            // MarkdownLayoutManager draws the checkbox at a calculated position.
             let dashLen = leadingSpaces + 2
-            if dashLen <= range.length {
-                backing.addAttributes(Self.invisibleAttrs, range: NSRange(location: range.location, length: dashLen))
-            }
-
-            // Make "[ ]" or "[x]" invisible — MarkdownLayoutManager draws SF Symbol on top
-            let cbStart = range.location + dashLen
             let cbLen = 3
-            if cbStart + cbLen <= NSMaxRange(range) {
-                backing.addAttributes(Self.invisibleAttrs, range: NSRange(location: cbStart, length: cbLen))
-            }
-
-            // Space after checkbox — keep visible width but add kern for 8pt spacing
-            let spaceAfterCB = cbStart + cbLen
-            if spaceAfterCB < NSMaxRange(range) {
-                backing.addAttributes([
-                    .foregroundColor: UIColor.clear,
-                    .kern: MarkdownLayout.listMarkerTextSpacing,
-                ], range: NSRange(location: spaceAfterCB, length: 1))
+            let totalPrefixLen = dashLen + cbLen + 1 // "- [ ] " or "- [x] "
+            if totalPrefixLen <= range.length {
+                backing.addAttributes(Self.hiddenAttrs, range: NSRange(location: range.location, length: totalPrefixLen))
+            } else if dashLen + cbLen <= range.length {
+                // No space after checkbox (end of line)
+                backing.addAttributes(Self.hiddenAttrs, range: NSRange(location: range.location, length: dashLen + cbLen))
             }
 
             // Strikethrough + muted for checked task content
             if checked {
-                let contentStart = dashLen + cbLen + 1
+                let contentStart = min(totalPrefixLen, range.length)
                 if contentStart < range.length {
                     let contentRange = NSRange(location: range.location + contentStart, length: range.length - contentStart)
                     backing.addAttributes([
@@ -365,16 +375,20 @@ class MarkdownTextStorage: NSTextStorage {
 
         case .blockquote(let depth):
             let para = NSMutableParagraphStyle()
-            let indent = CGFloat(depth) * MarkdownLayout.blockquoteIndent + 8
+            let indent = CGFloat(depth) * MarkdownLayout.blockquoteIndent + MarkdownLayout.blockquoteIndent
             para.firstLineHeadIndent = indent
             para.headIndent = indent
             para.paragraphSpacing = MarkdownLayout.paragraphSpacing
+            para.minimumLineHeight = MarkdownLayout.bodyLineHeight
+            para.maximumLineHeight = MarkdownLayout.bodyLineHeight
 
+            // Apple Notes style: normal weight text, secondary color, no background.
+            // The left bar is drawn by MarkdownLayoutManager.
             backing.addAttributes([
                 .foregroundColor: MarkdownColors.blockquoteText,
-                .font: MarkdownFonts.bodyItalic,
+                .font: MarkdownFonts.body,
                 .paragraphStyle: para,
-                .backgroundColor: MarkdownColors.blockquoteBackground,
+                .baselineOffset: MarkdownLayout.bodyBaselineOffset,
             ], range: range)
 
             // Hide the "> " prefix
@@ -403,31 +417,49 @@ class MarkdownTextStorage: NSTextStorage {
             ], range: range)
 
         case .horizontalRule:
-            backing.addAttributes([
-                .foregroundColor: MarkdownColors.horizontalRule,
-                .strikethroughStyle: NSUnderlineStyle.single.rawValue,
-                .strikethroughColor: MarkdownColors.horizontalRule,
-            ], range: range)
+            // Hide the "---" text — MarkdownLayoutManager draws a full-width line
+            backing.addAttributes(Self.hiddenAttrs, range: range)
+            let para = NSMutableParagraphStyle()
+            para.minimumLineHeight = MarkdownLayout.bodyLineHeight
+            para.maximumLineHeight = MarkdownLayout.bodyLineHeight
+            para.paragraphSpacing = MarkdownLayout.paragraphSpacing
+            backing.addAttribute(.paragraphStyle, value: para, range: range)
 
         case .tableRow:
             let isHeader = index + 1 < lineBlocks.count && lineBlocks[index + 1].block == .tableSeparator
             let font = isHeader ? MarkdownFonts.bodyBold : MarkdownFonts.body
 
-            backing.addAttribute(.font, value: font, range: range)
+            // Parse cells and set up tab-stop-based column layout
+            let cells = Self.parseTableCells(line)
+            let columnCount = max(cells.count, 1)
 
-            if isHeader {
-                backing.addAttribute(.backgroundColor, value: MarkdownColors.tableHeaderBackground, range: range)
-            }
+            let para = NSMutableParagraphStyle()
+            para.minimumLineHeight = MarkdownLayout.bodyLineHeight
+            para.maximumLineHeight = MarkdownLayout.bodyLineHeight
+            para.paragraphSpacing = 0
+            backing.addAttributes([
+                .font: font,
+                .foregroundColor: MarkdownColors.text,
+                .paragraphStyle: para,
+                .baselineOffset: MarkdownLayout.bodyBaselineOffset,
+            ], range: range)
 
+            // Hide all pipe characters — grid is drawn by MarkdownLayoutManager
             for (i, ch) in line.enumerated() where ch == "|" {
-                backing.addAttribute(.foregroundColor, value: MarkdownColors.tableBorder, range: NSRange(location: range.location + i, length: 1))
+                backing.addAttributes(Self.hiddenAttrs, range: NSRange(location: range.location + i, length: 1))
             }
+
+            // Store column count for LayoutManager (via a custom attribute)
+            backing.addAttribute(.tableColumnCount, value: columnCount, range: range)
+            backing.addAttribute(.tableIsHeader, value: isHeader, range: range)
 
         case .tableSeparator:
-            backing.addAttributes([
-                .font: UIFont.systemFont(ofSize: 6),
-                .foregroundColor: MarkdownColors.tableBorder.withAlphaComponent(0.3),
-            ], range: range)
+            // Hide the separator row entirely — just a thin line drawn by MarkdownLayoutManager
+            backing.addAttributes(Self.hiddenAttrs, range: range)
+            let para = NSMutableParagraphStyle()
+            para.minimumLineHeight = 4
+            para.maximumLineHeight = 4
+            backing.addAttribute(.paragraphStyle, value: para, range: range)
 
         case .paragraph:
             break
@@ -580,7 +612,10 @@ class MarkdownTextStorage: NSTextStorage {
     private func listParagraphStyle(indent: Int) -> NSMutableParagraphStyle {
         let para = NSMutableParagraphStyle()
         let indentPt = CGFloat(indent + 1) * MarkdownLayout.listIndentPerLevel
-        para.firstLineHeadIndent = indentPt - MarkdownLayout.listIndentPerLevel
+        // Both first-line and wrapped lines start at the same indent.
+        // Prefix chars are collapsed to zero-width so they don't push text right.
+        // Bullets/checkboxes/numbers are drawn by MarkdownLayoutManager in the margin.
+        para.firstLineHeadIndent = indentPt
         para.headIndent = indentPt
         para.paragraphSpacing = MarkdownLayout.listItemSpacing
         para.minimumLineHeight = MarkdownLayout.bodyLineHeight

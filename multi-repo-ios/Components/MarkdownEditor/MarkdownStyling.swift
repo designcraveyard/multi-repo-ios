@@ -29,73 +29,83 @@ import SwiftUI
 
 enum MarkdownFonts {
 
+    // ── iPad Scaling ────────────────────────────────────────────────
+    // iPad uses 20pt base (1.25× iPhone 16pt) per user feedback.
+
+    /// Scale factor: 1.25 on iPad, 1.0 on iPhone.
+    static let scale: CGFloat = UIDevice.current.userInterfaceIdiom == .pad ? 1.25 : 1.0
+
+    // ── Base Sizes (pre-scale) ─────────────────────────────────────
+    private static let h1Size: CGFloat = 28
+    private static let h2Size: CGFloat = 24
+    private static let h3Size: CGFloat = 20
+    private static let h4Size: CGFloat = 18
+    private static let h5Size: CGFloat = 16
+    private static let h6Size: CGFloat = 14
+    private static let bodySize: CGFloat = 16
+    private static let codeSize: CGFloat = 14
+
     // ── Headings ─────────────────────────────────────────────────────
-    // Maps to web --typography-title-* CSS custom properties.
-    // Each level reduces size; H4–H6 use semibold to stay visually
-    // distinct from body text at the same or smaller point size.
 
-    /// H1: Title Large — 28pt bold. Primary document heading.
-    static let h1 = UIFont.systemFont(ofSize: 28, weight: .bold)
+    /// H1: Title Large — 28pt (35pt iPad) bold.
+    static let h1 = UIFont.systemFont(ofSize: h1Size * scale, weight: .bold)
 
-    /// H2: Title Medium — 24pt bold. Section-level heading.
-    static let h2 = UIFont.systemFont(ofSize: 24, weight: .bold)
+    /// H2: Title Medium — 24pt (30pt iPad) bold.
+    static let h2 = UIFont.systemFont(ofSize: h2Size * scale, weight: .bold)
 
-    /// H3: Title Small — 20pt bold. Subsection heading.
-    static let h3 = UIFont.systemFont(ofSize: 20, weight: .bold)
+    /// H3: Title Small — 20pt (25pt iPad) bold.
+    static let h3 = UIFont.systemFont(ofSize: h3Size * scale, weight: .bold)
 
-    /// H4: Body Large Emphasis — 18pt semibold. Minor heading.
-    static let h4 = UIFont.systemFont(ofSize: 18, weight: .semibold)
+    /// H4: Body Large Emphasis — 18pt (22.5pt iPad) semibold.
+    static let h4 = UIFont.systemFont(ofSize: h4Size * scale, weight: .semibold)
 
-    /// H5: Body Medium Emphasis — 16pt semibold. Same size as body but heavier.
-    static let h5 = UIFont.systemFont(ofSize: 16, weight: .semibold)
+    /// H5: Body Medium Emphasis — 16pt (20pt iPad) semibold.
+    static let h5 = UIFont.systemFont(ofSize: h5Size * scale, weight: .semibold)
 
-    /// H6: Body Small Emphasis — 14pt semibold. Smallest heading level.
-    static let h6 = UIFont.systemFont(ofSize: 14, weight: .semibold)
+    /// H6: Body Small Emphasis — 14pt (17.5pt iPad) semibold.
+    static let h6 = UIFont.systemFont(ofSize: h6Size * scale, weight: .semibold)
 
 
     // ── Body ─────────────────────────────────────────────────────────
-    // Default text fonts. 16pt matches Apple Notes body size.
-    // Line height (24pt) is controlled via NSParagraphStyle, not here.
 
-    /// Default body text — 16pt regular. All non-heading, non-code content.
-    static let body = UIFont.systemFont(ofSize: 16, weight: .regular)
+    /// Default body text — 16pt (20pt iPad) regular.
+    static let body = UIFont.systemFont(ofSize: bodySize * scale, weight: .regular)
 
     /// Bold emphasis — rendered by **text** or __text__ syntax.
-    static let bodyBold = UIFont.systemFont(ofSize: 16, weight: .bold)
+    static let bodyBold = UIFont.systemFont(ofSize: bodySize * scale, weight: .bold)
 
     /// Italic emphasis — rendered by *text* or _text_ syntax.
     static let bodyItalic: UIFont = {
+        let size = bodySize * scale
         let desc = UIFontDescriptor.preferredFontDescriptor(withTextStyle: .body)
-            .withSize(16)
+            .withSize(size)
             .withSymbolicTraits(.traitItalic)
-            ?? UIFontDescriptor.preferredFontDescriptor(withTextStyle: .body).withSize(16)
-        return UIFont(descriptor: desc, size: 16)
+            ?? UIFontDescriptor.preferredFontDescriptor(withTextStyle: .body).withSize(size)
+        return UIFont(descriptor: desc, size: size)
     }()
 
     /// Bold + Italic — rendered by ***text*** syntax.
     static let bodyBoldItalic: UIFont = {
+        let size = bodySize * scale
         let traits: UIFontDescriptor.SymbolicTraits = [.traitBold, .traitItalic]
         let desc = UIFontDescriptor.preferredFontDescriptor(withTextStyle: .body)
-            .withSize(16)
+            .withSize(size)
             .withSymbolicTraits(traits)
-            ?? UIFontDescriptor.preferredFontDescriptor(withTextStyle: .body).withSize(16)
-        return UIFont(descriptor: desc, size: 16)
+            ?? UIFontDescriptor.preferredFontDescriptor(withTextStyle: .body).withSize(size)
+        return UIFont(descriptor: desc, size: size)
     }()
 
 
     // ── Code ─────────────────────────────────────────────────────────
-    // Monospace fonts for inline `code` and fenced ```code blocks```.
-    // Slightly smaller than body to visually offset code from prose.
 
-    /// Inline code — 14pt monospace. Sits inside body text.
-    static let code = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+    /// Inline code — 14pt (17.5pt iPad) monospace.
+    static let code = UIFont.monospacedSystemFont(ofSize: codeSize * scale, weight: .regular)
 
-    /// Code block — 14pt monospace. Full-line code in fenced blocks.
-    static let codeBlock = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+    /// Code block — 14pt (17.5pt iPad) monospace.
+    static let codeBlock = UIFont.monospacedSystemFont(ofSize: codeSize * scale, weight: .regular)
 
 
     // ── Helpers ──────────────────────────────────────────────────────
-    // Font lookup by heading level (1–6).
 
     static func heading(level: Int) -> UIFont {
         switch level {
@@ -230,13 +240,12 @@ enum MarkdownLayout {
     // Body text uses a fixed 24pt line height (1.5× the 16pt body font).
     // This creates comfortable reading density matching Apple Notes.
 
-    /// Fixed line height for body text — 24pt.
+    /// Fixed line height for body text — 24pt (30pt iPad).
     /// Applied via NSParagraphStyle.minimumLineHeight / maximumLineHeight.
-    static let bodyLineHeight: CGFloat = 24
+    static let bodyLineHeight: CGFloat = 24 * MarkdownFonts.scale
 
-    /// Baseline offset to vertically center 16pt text in 24pt line box.
-    /// Formula: (lineHeight - fontLineHeight) / 4 ≈ (24 - 19.1) / 4
-    static let bodyBaselineOffset: CGFloat = 1.2
+    /// Baseline offset to vertically center text in the line box.
+    static let bodyBaselineOffset: CGFloat = 1.2 * MarkdownFonts.scale
 
 
     // ── Lists ────────────────────────────────────────────────────────
@@ -266,7 +275,7 @@ enum MarkdownLayout {
     // ── Code ─────────────────────────────────────────────────────────
 
     /// Padding inside fenced code blocks.
-    static let codeBlockPadding: CGFloat = CGFloat.space4
+    static let codeBlockPadding: CGFloat = CGFloat.space2
 
     /// Horizontal padding for inline code spans.
     static let codeInlinePaddingH: CGFloat = 4
