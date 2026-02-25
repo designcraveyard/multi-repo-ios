@@ -7,6 +7,7 @@ xcuserdata/
 
 # Secrets (copy Secrets.example.swift → multi-repo-ios/Supabase/Secrets.swift)
 **/Secrets.swift
+**/OpenAISecrets.swift
 
 # Build products
 build/

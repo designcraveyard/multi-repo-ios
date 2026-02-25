@@ -4,6 +4,8 @@
 <dict>
 	<key>GIDClientID</key>
 	<string>225246924892-j8isof6kj43geg9j54651kt2hd5c62al.apps.googleusercontent.com</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app uses the microphone for voice transcription.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
