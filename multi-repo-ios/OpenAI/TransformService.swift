@@ -139,71 +139,72 @@ final class TransformService {
             }
 
             // --- Parse SSE stream ---
-            // `pendingCalls` accumulates function call arguments as they stream in.
-            // Key = call_id (from the API), Value = (tool name, accumulated args JSON string).
-            var pendingCalls: [String: (name: String, args: String)] = [:]
+            // The Responses API uses two different identifiers for the same function call:
+            //   item.call_id ("call_xxx") — used in output_item.added and some stream events
+            //   item.id ("fc_xxx") — used as item_id in delta/done stream events
+            // We store each call by BOTH keys (mapping to a tuple that always includes the
+            // real call_id), so lookups succeed regardless of which identifier an event carries.
+            // Value tuple: (toolName, realCallId, accumulatedArgs)
+            var pendingCalls: [String: (name: String, callId: String, args: String)] = [:]
             var hasFunctionCalls = false
 
-            // Iterate each line of the SSE stream. The Responses API sends lines like:
-            //   data: {"type":"response.output_text.delta","delta":"Hello"}
-            //   data: [DONE]
-            // Non-data lines (e.g. blank lines, "event:" lines) are skipped.
             for try await line in bytes.lines {
-                guard line.hasPrefix("data: ") else { continue }  // Skip non-data SSE lines
-                let jsonStr = String(line.dropFirst(6))            // Strip "data: " prefix
-                if jsonStr == "[DONE]" { break }                   // End-of-stream sentinel
+                guard line.hasPrefix("data: ") else { continue }
+                let jsonStr = String(line.dropFirst(6))
+                if jsonStr == "[DONE]" { break }
 
-                // Parse the JSON event. If parsing fails, skip silently — the API may send
-                // events we don't handle (e.g. rate_limits.updated) and that's fine.
                 guard let lineData = jsonStr.data(using: .utf8),
                       let event = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
                       let eventType = event["type"] as? String else { continue }
 
                 switch eventType {
 
-                // --- Text output: the model is generating text tokens ---
                 case "response.output_text.delta":
                     if let delta = event["delta"] as? String {
                         continuation.yield(.textDelta(delta))
                     }
 
-                // --- Function call started: the model wants to invoke a tool ---
-                // Register the call in pendingCalls so we can accumulate its arguments.
+                // Register under both item.call_id ("call_xxx") and item.id ("fc_xxx").
+                // Store the real call_id in the value so output items always use the right ID.
                 case "response.output_item.added":
                     if let item = event["item"] as? [String: Any],
                        item["type"] as? String == "function_call",
                        let callId = item["call_id"] as? String,
                        let name = item["name"] as? String {
                         continuation.yield(.functionCallStart(callId: callId, name: name))
-                        pendingCalls[callId] = (name: name, args: "")
+                        let entry = (name: name, callId: callId, args: "")
+                        pendingCalls[callId] = entry
+                        if let itemId = item["id"] as? String, itemId != callId {
+                            pendingCalls[itemId] = entry  // alias by item.id
+                        }
                         hasFunctionCalls = true
                     }
 
-                // --- Function call arguments streaming in ---
-                // The model sends argument chunks incrementally; we accumulate them.
-                // Note: the API may use either "call_id" or "item_id" depending on the event,
-                // so we check both with a fallback chain.
+                // Both "call_id" and "item_id" resolve to the same entry via the dual-key map.
                 case "response.function_call_arguments.delta":
-                    let callId = (event["call_id"] as? String) ?? (event["item_id"] as? String) ?? ""
+                    let key = (event["call_id"] as? String) ?? (event["item_id"] as? String) ?? ""
                     if let delta = event["delta"] as? String {
-                        continuation.yield(.functionCallDelta(callId: callId, delta: delta))
-                        if var pending = pendingCalls[callId] {
+                        continuation.yield(.functionCallDelta(callId: key, delta: delta))
+                        if var pending = pendingCalls[key] {
                             pending.args += delta
-                            pendingCalls[callId] = pending
+                            // Propagate update to both keys (they share the same real callId)
+                            for k in pendingCalls.keys where pendingCalls[k]?.callId == pending.callId {
+                                pendingCalls[k] = pending
+                            }
                         }
                     }
 
-                // --- Function call arguments complete ---
-                // Replace the accumulated args with the final complete string from the API
-                // (more reliable than our incremental accumulation).
+                // Overwrite accumulated args with the authoritative final value.
                 case "response.function_call_arguments.done":
-                    let callId = (event["call_id"] as? String) ?? (event["item_id"] as? String) ?? ""
-                    if let args = event["arguments"] as? String, let pending = pendingCalls[callId] {
-                        pendingCalls[callId] = (name: pending.name, args: args)
-                        continuation.yield(.functionCallDone(callId: callId, name: pending.name, arguments: args))
+                    let key = (event["call_id"] as? String) ?? (event["item_id"] as? String) ?? ""
+                    if let args = event["arguments"] as? String, let pending = pendingCalls[key] {
+                        let updated = (name: pending.name, callId: pending.callId, args: args)
+                        for k in pendingCalls.keys where pendingCalls[k]?.callId == pending.callId {
+                            pendingCalls[k] = updated
+                        }
+                        continuation.yield(.functionCallDone(callId: key, name: pending.name, arguments: args))
                     }
 
-                // --- Response complete: capture the response ID for potential tool-call continuation ---
                 case "response.completed":
                     if let resp = event["response"] as? [String: Any],
                        let id = resp["id"] as? String {
@@ -211,42 +212,37 @@ final class TransformService {
                     }
 
                 default:
-                    break  // Ignore unhandled event types (rate_limits, metadata, etc.)
+                    break
                 }
             }
 
             // --- Handle tool calls ---
-            // If the model requested any function calls, execute them locally using the
-            // ToolHandler closures registered in the config, then loop back to send the
-            // results to the API. This is the "tool-call loop" — it continues until the
-            // model produces a response with no function calls.
+            // Deduplicate by real callId (each call was registered under two map keys).
             if hasFunctionCalls && !pendingCalls.isEmpty {
+                var seenCallIds = Set<String>()
                 var results: [[String: Any]] = []
-                for (callId, call) in pendingCalls {
+                for (_, call) in pendingCalls {
+                    guard seenCallIds.insert(call.callId).inserted else { continue }
                     if let handler = config.toolHandlers[call.name] {
                         do {
-                            // Invoke the local tool handler with the model's JSON arguments.
-                            // The handler is async and may make network calls (e.g. USDA API).
-                            let result = try await handler(call.args)
+                            // Use "{}" if args are empty to prevent JSON parse crashes in the handler
+                            let argsToPass = call.args.isEmpty ? "{}" : call.args
+                            let result = try await handler(argsToPass)
                             results.append([
                                 "type": "function_call_output",
-                                "call_id": callId,
+                                "call_id": call.callId,
                                 "output": result,
                             ])
                         } catch {
-                            // On tool failure: yield an error event for the UI, but still
-                            // send an error output back to the model so it can handle gracefully
-                            // (e.g. tell the user the lookup failed) rather than hanging.
                             continuation.yield(.error("Tool '\(call.name)' error: \(error.localizedDescription)"))
                             results.append([
                                 "type": "function_call_output",
-                                "call_id": callId,
+                                "call_id": call.callId,
                                 "output": "{\"error\": \"\(error.localizedDescription)\"}",
                             ])
                         }
                     }
                 }
-                // Store tool outputs and loop back to send them with previous_response_id
                 toolOutputs = results
                 continue
             }

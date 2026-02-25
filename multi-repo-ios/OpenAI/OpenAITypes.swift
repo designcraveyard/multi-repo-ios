@@ -120,6 +120,7 @@ enum TransformTool {
                 "name": name,
                 "description": description,
                 "parameters": parameters,
+                "strict": true,
             ]
         }
     }

@@ -39,7 +39,8 @@ enum FoodLoggerConfig {
         id: "food-logger",
         systemPrompt: """
             You are a food logging assistant. When the user describes food they ate, \
-            use the food_search tool to look up nutritional information from the USDA database. \
+            ALWAYS call the food_search function tool to look up nutritional information from the USDA database \
+            — do NOT use web search for this. \
             Present the results in a clear, readable format with calories and macronutrients. \
             If there are multiple matches, help the user pick the right one.
             """,
@@ -60,6 +61,7 @@ enum FoodLoggerConfig {
                         ] as [String: Any],
                     ] as [String: Any],
                     "required": ["query"],
+                    "additionalProperties": false,
                 ]
             ),
         ],
@@ -110,18 +112,19 @@ enum FoodLoggerConfig {
             let nutrients = food["foodNutrients"] as? [[String: Any]] ?? []
 
             // Helper to extract a nutrient value by its USDA nutrient ID.
+            // Returns NSNull() instead of nil so JSONSerialization can handle it.
             // USDA nutrient IDs are stable numeric identifiers:
             //   1008 = Energy (kcal)     — calories
             //   1003 = Protein (g)
             //   1004 = Total lipid/fat (g)
             //   1005 = Carbohydrate (g)
             func nutrientValue(_ id: Int) -> Any {
-                nutrients.first { ($0["nutrientId"] as? Int) == id }?["value"] as Any
+                nutrients.first { ($0["nutrientId"] as? Int) == id }?["value"] ?? NSNull()
             }
             return [
-                "fdcId": food["fdcId"] as Any,
-                "description": food["description"] as Any,
-                "brand": food["brandName"] as Any,
+                "fdcId": food["fdcId"] ?? NSNull(),
+                "description": food["description"] ?? NSNull(),
+                "brand": food["brandName"] ?? NSNull(),
                 "nutrients": [
                     "calories": nutrientValue(1008),   // Energy in kcal
                     "protein": nutrientValue(1003),    // Protein in grams
