@@ -2,8 +2,8 @@
 //  SupabaseManager.swift
 //  multi-repo-ios
 //
-//  Singleton Supabase client. Reads credentials from Xcode scheme
-//  environment variables (SUPABASE_URL, SUPABASE_ANON_KEY).
+//  Singleton Supabase client. Reads credentials from Secrets.swift,
+//  with optional override from Xcode scheme environment variables.
 //
 
 import Foundation
@@ -16,16 +16,14 @@ final class SupabaseManager {
     let client: SupabaseClient
 
     private init() {
-        guard let urlString = ProcessInfo.processInfo.environment["SUPABASE_URL"],
-              let url = URL(string: urlString),
-              let anonKey = ProcessInfo.processInfo.environment["SUPABASE_ANON_KEY"]
-        else {
-            fatalError(
-                """
-                Missing Supabase credentials. Set SUPABASE_URL and SUPABASE_ANON_KEY \
-                in your Xcode scheme environment variables.
-                """
-            )
+        // Prefer env vars (Xcode scheme) if set, fall back to compiled-in Secrets
+        let urlString = ProcessInfo.processInfo.environment["SUPABASE_URL"]
+            ?? Secrets.supabaseURL
+        let anonKey = ProcessInfo.processInfo.environment["SUPABASE_ANON_KEY"]
+            ?? Secrets.supabaseAnonKey
+
+        guard let url = URL(string: urlString) else {
+            fatalError("Invalid SUPABASE_URL: \(urlString)")
         }
 
         client = SupabaseClient(supabaseURL: url, supabaseKey: anonKey)

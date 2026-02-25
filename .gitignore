@@ -5,6 +5,9 @@ xcuserdata/
 # Xcode shared schemes (may contain environment variables with secrets)
 *.xcodeproj/xcshareddata/xcschemes/
 
+# Secrets (copy Secrets.example.swift → multi-repo-ios/Supabase/Secrets.swift)
+**/Secrets.swift
+
 # Build products
 build/
 DerivedData/

@@ -1,14 +1,13 @@
-// Config.swift — Supabase credentials
-// Set SUPABASE_URL and SUPABASE_ANON_KEY in Xcode scheme environment variables.
-// Never commit real credentials to source control.
+// Config.swift — Supabase credentials accessor.
+// Reads from Secrets.swift (compiled in) with env var override.
 import Foundation
 
 enum SupabaseConfig {
     static let url = URL(string:
         ProcessInfo.processInfo.environment["SUPABASE_URL"]
-        ?? "https://your-project-ref.supabase.co"
+        ?? Secrets.supabaseURL
     )!
     static let anonKey: String =
         ProcessInfo.processInfo.environment["SUPABASE_ANON_KEY"]
-        ?? "your-anon-key-here"
+        ?? Secrets.supabaseAnonKey
 }
