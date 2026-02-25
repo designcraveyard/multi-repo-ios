@@ -144,12 +144,14 @@ struct ContentView: View {
                 AppNavTab(id: 1, label: "Editor",     icon: "doc.richtext"),
                 AppNavTab(id: 2, label: "AI Demo",    icon: "sparkles"),
                 AppNavTab(id: 3, label: "Settings",   icon: "gearshape"),
+                AppNavTab(id: 4, label: "Assistant",  icon: "bubble.left.and.text.bubble.right"),
             ]
         ) {
             showcaseTab
             editorTab
             AIDemoView()
             settingsTab
+            AssistantView()
         }
     }
 
