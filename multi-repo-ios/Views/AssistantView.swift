@@ -19,7 +19,7 @@ struct AssistantView: View {
 
     // MARK: - Constants
 
-    private let assistantURL = URL(string: "http://192.168.1.6:3000/assistant-embed")!
+    private let assistantURL = URL(string: "https://lifegraph-agent.vercel.app/")!
 
     // MARK: - Body
 
