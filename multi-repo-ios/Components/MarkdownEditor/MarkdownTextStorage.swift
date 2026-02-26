@@ -437,14 +437,12 @@ class MarkdownTextStorage: NSTextStorage {
             backing.addAttributes([
                 .font: MarkdownFonts.codeBlock,
                 .foregroundColor: MarkdownColors.textMuted,
-                .backgroundColor: MarkdownColors.codeBackground,
             ], range: range)
 
         case .codeBlock:
             backing.addAttributes([
                 .font: MarkdownFonts.codeBlock,
                 .foregroundColor: MarkdownColors.codeText,
-                .backgroundColor: MarkdownColors.codeBackground,
             ], range: range)
 
         case .horizontalRule:

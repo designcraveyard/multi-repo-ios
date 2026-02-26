@@ -20,6 +20,9 @@ class MarkdownLayoutManager: NSLayoutManager {
         // Draw highlight backgrounds BEFORE text so text renders on top
         drawHighlightBackgrounds(forGlyphRange: glyphsToShow, at: origin)
 
+        // Draw code block container backgrounds BEFORE text so text renders on top
+        drawCodeBlockContainers(forGlyphRange: glyphsToShow, at: origin)
+
         super.drawGlyphs(forGlyphRange: glyphsToShow, at: origin)
 
         guard let storage = markdownStorage,
@@ -106,6 +109,66 @@ class MarkdownLayoutManager: NSLayoutManager {
                 color.setFill()
                 path.fill()
             }
+        }
+    }
+
+    // MARK: - Code Block Containers
+
+    /// Groups consecutive code block lines (fence open → code lines → fence close)
+    /// and draws a single full-width rounded container rect behind each group.
+    /// Called before `super.drawGlyphs` so text renders on top.
+    private func drawCodeBlockContainers(forGlyphRange glyphsToShow: NSRange, at origin: CGPoint) {
+        guard let storage = markdownStorage,
+              let container = textContainers.first else { return }
+
+        let visibleCharRange = characterRange(forGlyphRange: glyphsToShow, actualGlyphRange: nil)
+
+        // Collect consecutive code block groups from lineBlocks
+        var groups: [[NSRange]] = []
+        var currentGroup: [NSRange] = []
+
+        for (lineRange, block) in storage.lineBlocks {
+            switch block {
+            case .codeFenceOpen, .codeBlock, .codeFenceClose:
+                currentGroup.append(lineRange)
+            default:
+                if !currentGroup.isEmpty {
+                    groups.append(currentGroup)
+                    currentGroup = []
+                }
+            }
+        }
+        if !currentGroup.isEmpty {
+            groups.append(currentGroup)
+        }
+
+        // Draw a rounded rect for each code block group
+        let padding = MarkdownLayout.codeBlockPadding
+        let cornerRadius = MarkdownLayout.codeBlockCornerRadius
+
+        for group in groups {
+            guard let firstRange = group.first, let lastRange = group.last else { continue }
+
+            // Check if any line in the group intersects the visible range
+            let groupRange = NSRange(location: firstRange.location, length: NSMaxRange(lastRange) - firstRange.location)
+            guard NSIntersectionRange(visibleCharRange, groupRange).length > 0 else { continue }
+
+            // Compute bounding rect from first to last line
+            let firstGlyphIndex = glyphIndexForCharacter(at: firstRange.location)
+            let lastGlyphIndex = glyphIndexForCharacter(at: lastRange.location)
+            let firstLineRect = lineFragmentRect(forGlyphAt: firstGlyphIndex, effectiveRange: nil)
+            let lastLineRect = lineFragmentRect(forGlyphAt: lastGlyphIndex, effectiveRange: nil)
+
+            let containerRect = CGRect(
+                x: origin.x - padding,
+                y: origin.y + firstLineRect.minY - padding,
+                width: container.size.width + padding * 2,
+                height: (lastLineRect.maxY - firstLineRect.minY) + padding * 2
+            )
+
+            let path = UIBezierPath(roundedRect: containerRect, cornerRadius: cornerRadius)
+            MarkdownColors.codeBackground.setFill()
+            path.fill()
         }
     }
 

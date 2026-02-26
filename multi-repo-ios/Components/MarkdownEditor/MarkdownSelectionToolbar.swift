@@ -29,7 +29,7 @@ class MarkdownSelectionToolbar: UIView {
         ButtonSpec(icon: "underline", label: "Underline", action: .underline, dividerAfter: false),
         ButtonSpec(icon: "strikethrough", label: "Strikethrough", action: .strikethrough, dividerAfter: false),
         ButtonSpec(icon: "highlighter", label: "Highlight", action: .highlight, dividerAfter: false),
-        ButtonSpec(icon: "chevron.left.forwardslash.chevron.right", label: "Code", action: .inlineCode, dividerAfter: true),
+        ButtonSpec(icon: "chevron.left.forwardslash.chevron.right", label: "Code", action: .codePicker, dividerAfter: true),
         ButtonSpec(icon: "link", label: "Link", action: .link, dividerAfter: true),
         ButtonSpec(icon: "textformat.size.larger", label: "H1", action: .heading1, dividerAfter: false),
         ButtonSpec(icon: "textformat.size", label: "H2", action: .heading2, dividerAfter: false),

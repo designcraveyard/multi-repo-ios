@@ -566,6 +566,9 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
             case .headingPicker:
                 showHeadingPicker(in: textView, storage: storage)
                 return
+            case .codePicker:
+                showCodePicker(in: textView, storage: storage)
+                return
             case .bulletList:
                 insertLinePrefix(textView: textView, prefix: "- ", storage: storage)
             case .orderedList:
@@ -737,6 +740,44 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
                     }
                 })
             }
+
+            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+
+            if let popover = alert.popoverPresentationController {
+                popover.sourceView = textView
+                let caretRect = textView.caretRect(for: textView.selectedTextRange?.start ?? textView.beginningOfDocument)
+                popover.sourceRect = caretRect
+            }
+
+            viewController.present(alert, animated: true)
+        }
+
+        // MARK: - Code Picker
+
+        private func showCodePicker(in textView: UITextView, storage: MarkdownTextStorage) {
+            guard let viewController = textView.window?.rootViewController?.presentedViewController
+                    ?? textView.window?.rootViewController else { return }
+
+            let alert = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
+
+            alert.addAction(UIAlertAction(title: "Inline Code", style: .default) { [weak self] _ in
+                self?.toggleWrap(textView: textView, prefix: "`", suffix: "`")
+                DispatchQueue.main.async {
+                    self?.parent.text = textView.textStorage.string
+                    self?.updatePlaceholder(textView)
+                }
+            })
+
+            alert.addAction(UIAlertAction(title: "Code Block", style: .default) { [weak self] _ in
+                let range = textView.selectedRange
+                let insertion = "```\n\n```"
+                storage.replaceCharacters(in: range, with: insertion)
+                textView.selectedRange = NSRange(location: range.location + 4, length: 0)
+                DispatchQueue.main.async {
+                    self?.parent.text = textView.textStorage.string
+                    self?.updatePlaceholder(textView)
+                }
+            })
 
             alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
 

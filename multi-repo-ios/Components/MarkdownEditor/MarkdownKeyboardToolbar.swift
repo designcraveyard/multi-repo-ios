@@ -31,6 +31,7 @@ enum MarkdownToolbarAction {
     case table
     case indent
     case outdent
+    case codePicker
     case aiTranscribe
     case aiTransform
 }
@@ -66,7 +67,7 @@ class MarkdownKeyboardToolbar: UIView {
         ButtonSpec(icon: "underline", label: "Underline", action: .underline, dividerAfter: false),
         ButtonSpec(icon: "strikethrough", label: "Strikethrough", action: .strikethrough, dividerAfter: false),
         ButtonSpec(icon: "highlighter", label: "Highlight", action: .highlight, dividerAfter: false),
-        ButtonSpec(icon: "chevron.left.forwardslash.chevron.right", label: "Code", action: .inlineCode, dividerAfter: true),
+        ButtonSpec(icon: "chevron.left.forwardslash.chevron.right", label: "Code", action: .codePicker, dividerAfter: true),
 
         // Group 2: Heading picker (single Aa button opens heading menu)
         ButtonSpec(icon: "textformat.size", label: "Heading", action: .headingPicker, dividerAfter: true),
@@ -78,7 +79,6 @@ class MarkdownKeyboardToolbar: UIView {
 
         // Group 4: Block elements
         ButtonSpec(icon: "text.quote", label: "Quote", action: .blockquote, dividerAfter: false),
-        ButtonSpec(icon: "curlybraces", label: "Code Block", action: .codeBlock, dividerAfter: false),
         ButtonSpec(icon: "minus", label: "Divider", action: .horizontalRule, dividerAfter: true),
 
         // Group 5: Rich elements
