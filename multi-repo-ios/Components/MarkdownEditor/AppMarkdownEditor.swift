@@ -291,6 +291,11 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
         // Placeholder
         context.coordinator.updatePlaceholder(textView)
 
+        // Initial table overlay setup (deferred so layout is ready)
+        DispatchQueue.main.async {
+            context.coordinator.updateTableOverlays()
+        }
+
         return textView
     }
 
@@ -310,6 +315,9 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
                 storage.replaceCharacters(in: NSRange(location: 0, length: storage.length), with: text)
                 let safeRange = NSRange(location: min(selectedRange.location, storage.length), length: 0)
                 textView.selectedRange = safeRange
+                DispatchQueue.main.async {
+                    coordinator.updateTableOverlays()
+                }
             }
         }
 
@@ -332,6 +340,10 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
 
         // Image store
         let imageStore = MarkdownImageStore()
+
+        // Table overlays
+        private var tableOverlays: [(groupRange: NSRange, view: MarkdownTableView, model: MarkdownTableModel)] = []
+        private var isUpdatingFromOverlay = false
 
         // AI features
         private var audioRecorder: AppAudioRecorder?
@@ -418,6 +430,7 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
             isUpdating = false
             updatePlaceholder(textView)
             updateContentHeight(textView)
+            updateTableOverlays()
 
             // Fix cursor height: set typing attributes to match current line block type
             if let storage = textStorage {
@@ -427,6 +440,14 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
 
         func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
             guard let storage = textStorage else { return true }
+
+            // Block direct edits inside table rows — editing happens via the overlay
+            if !isUpdatingFromOverlay {
+                let block = blockAtCursor(range.location, storage: storage)
+                if case .tableRow = block { return false }
+                if case .tableSeparator = block { return false }
+            }
+
             if MarkdownInputProcessor.process(textView: textView, range: range, replacementText: text, textStorage: storage) {
                 DispatchQueue.main.async { [weak self] in
                     self?.parent.text = textView.textStorage.string
@@ -642,9 +663,11 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
             case .table:
                 let table = "| Column 1 | Column 2 | Column 3 |\n| --- | --- | --- |\n|  |  |  |"
                 storage.replaceCharacters(in: range, with: table)
-                // Place cursor in the first data cell (after the third row's "| ")
-                let dataRowStart = range.location + "| Column 1 | Column 2 | Column 3 |\n| --- | --- | --- |\n| ".count
-                textView.selectedRange = NSRange(location: dataRowStart, length: 0)
+                textView.selectedRange = NSRange(location: range.location + table.count, length: 0)
+                // Refresh table overlays after insertion
+                DispatchQueue.main.async { [weak self] in
+                    self?.updateTableOverlays()
+                }
             case .indent:
                 _ = MarkdownInputProcessor.process(textView: textView, range: range, replacementText: "\t", textStorage: storage)
             case .outdent:
@@ -934,6 +957,102 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
             let size = textView.sizeThatFits(CGSize(width: textView.bounds.width, height: .greatestFiniteMagnitude))
             let newHeight = max(parent.minHeight, size.height)
             parent.onHeightChange(newHeight)
+        }
+
+        // MARK: - Table Overlay Management
+
+        /// Creates, updates, and removes MarkdownTableView overlays to match
+        /// the current table groups in the text storage. Each contiguous group
+        /// of table rows gets one overlay positioned over the invisible text.
+        func updateTableOverlays() {
+            guard let textView = textView,
+                  let storage = textStorage,
+                  !isUpdatingFromOverlay else { return }
+
+            let layoutManager = textView.layoutManager
+            let container = textView.textContainer
+            let inset = textView.textContainerInset
+            let groups = storage.tableGroups()
+
+            // Remove overlays that no longer correspond to a group
+            var newOverlays: [(groupRange: NSRange, view: MarkdownTableView, model: MarkdownTableModel)] = []
+
+            for group in groups {
+                // Find table row entries for this group (excluding separator)
+                let rowEntries = storage.lineBlocks.filter { entry in
+                    if case .tableRow = entry.block,
+                       NSIntersectionRange(group, entry.range).length > 0 { return true }
+                    return false
+                }
+                guard !rowEntries.isEmpty else { continue }
+
+                // Compute the rect covering all table rows (header + data, skipping separator)
+                let firstGlyphIndex = layoutManager.glyphIndexForCharacter(at: rowEntries.first!.range.location)
+                let lastGlyphIndex = layoutManager.glyphIndexForCharacter(at: rowEntries.last!.range.location)
+                let firstLineRect = layoutManager.lineFragmentRect(forGlyphAt: firstGlyphIndex, effectiveRange: nil)
+                let lastLineRect = layoutManager.lineFragmentRect(forGlyphAt: lastGlyphIndex, effectiveRange: nil)
+
+                let tableRect = CGRect(
+                    x: inset.left,
+                    y: inset.top + firstLineRect.minY,
+                    width: container.size.width,
+                    height: lastLineRect.maxY - firstLineRect.minY
+                )
+
+                // Extract markdown text for this group
+                let groupText = (storage.string as NSString).substring(with: group)
+
+                // Try to reuse existing overlay for this group
+                if let existingIdx = tableOverlays.firstIndex(where: { NSIntersectionRange($0.groupRange, group).length > 0 }) {
+                    let existing = tableOverlays[existingIdx]
+                    existing.view.frame = tableRect
+                    newOverlays.append((groupRange: group, view: existing.view, model: existing.model))
+                    tableOverlays.remove(at: existingIdx)
+                } else {
+                    // Create a new overlay
+                    guard let model = MarkdownTableModel.fromMarkdown(groupText) else { continue }
+                    let tableView = MarkdownTableView(model: model)
+                    tableView.frame = tableRect
+
+                    tableView.onModelChanged = { [weak self] in
+                        guard let self else { return }
+                        self.syncTableToStorage(model: model, groupRange: group)
+                    }
+
+                    textView.addSubview(tableView)
+                    newOverlays.append((groupRange: group, view: tableView, model: model))
+                }
+            }
+
+            // Remove stale overlays
+            for stale in tableOverlays {
+                stale.view.removeFromSuperview()
+            }
+            tableOverlays = newOverlays
+        }
+
+        /// Syncs the overlay model's data back into the text storage as markdown pipe syntax.
+        private func syncTableToStorage(model: MarkdownTableModel, groupRange: NSRange) {
+            guard let textView = textView,
+                  let storage = textStorage else { return }
+
+            isUpdatingFromOverlay = true
+            defer { isUpdatingFromOverlay = false }
+
+            let newMarkdown = model.toMarkdown()
+            let safeRange = NSRange(
+                location: groupRange.location,
+                length: min(groupRange.length, storage.length - groupRange.location)
+            )
+
+            storage.replaceCharacters(in: safeRange, with: newMarkdown)
+            parent.text = storage.string
+            updatePlaceholder(textView)
+
+            // Defer overlay refresh so layout manager has updated
+            DispatchQueue.main.async { [weak self] in
+                self?.updateTableOverlays()
+            }
         }
 
         // MARK: - Block Type Helper

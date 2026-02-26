@@ -48,13 +48,14 @@ class MarkdownTableView: UIView {
         let layout = createLayout()
         collectionView = UICollectionView(frame: bounds, collectionViewLayout: layout)
         collectionView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        collectionView.backgroundColor = .clear
+        collectionView.backgroundColor = UIColor.systemBackground
         collectionView.dataSource = self
         collectionView.delegate = self
         collectionView.register(TableCellView.self, forCellWithReuseIdentifier: TableCellView.reuseID)
         collectionView.isScrollEnabled = false
         addSubview(collectionView)
 
+        backgroundColor = UIColor.systemBackground
         layer.cornerRadius = cornerRadius
         layer.borderWidth = 1
         layer.borderColor = borderColor.cgColor

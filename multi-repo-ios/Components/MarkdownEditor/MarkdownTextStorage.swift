@@ -168,18 +168,12 @@ class MarkdownTextStorage: NSTextStorage {
                 case .heading(let level):
                     font = MarkdownFonts.heading(level: level)
                 case .tableRow:
-                    // Determine if this is a header row
-                    if let idx = lineBlocks.firstIndex(where: { $0.range == lineRange }),
-                       idx + 1 < lineBlocks.count,
-                       lineBlocks[idx + 1].block == .tableSeparator {
-                        font = MarkdownFonts.bodyBold
-                    } else {
-                        font = MarkdownFonts.body
-                    }
-                    color = MarkdownColors.text
+                    // Table rows are rendered by overlay — keep text invisible
+                    font = MarkdownFonts.body
+                    color = UIColor.clear
                     let tablePara = NSMutableParagraphStyle()
-                    tablePara.minimumLineHeight = MarkdownLayout.bodyLineHeight
-                    tablePara.maximumLineHeight = MarkdownLayout.bodyLineHeight
+                    tablePara.minimumLineHeight = 44
+                    tablePara.maximumLineHeight = 44
                     tablePara.paragraphSpacing = 0
                     para = tablePara
                 case .tableSeparator:
@@ -511,46 +505,23 @@ class MarkdownTextStorage: NSTextStorage {
 
         case .tableRow:
             let isHeader = index + 1 < lineBlocks.count && lineBlocks[index + 1].block == .tableSeparator
-            let font = isHeader ? MarkdownFonts.bodyBold : MarkdownFonts.body
 
-            // Parse cells and set up tab-stop-based column layout
-            let cells = Self.parseTableCells(line)
-            let columnCount = max(cells.count, 1)
-
+            // Table rows are rendered by a MarkdownTableView overlay.
+            // The text in storage is invisible — the overlay shows an editable grid.
+            // We allocate 44pt line height to match the overlay's cell height.
             let para = NSMutableParagraphStyle()
-            para.minimumLineHeight = MarkdownLayout.bodyLineHeight
-            para.maximumLineHeight = MarkdownLayout.bodyLineHeight
+            para.minimumLineHeight = 44
+            para.maximumLineHeight = 44
             para.paragraphSpacing = 0
 
-            // Apply uniform style to the ENTIRE row first — this ensures every
-            // character (including newly typed ones) gets visible text color and
-            // the correct font. This is critical: processEditing() re-runs on
-            // every keystroke, and per-character styling can interfere with the
-            // text system's attribute resolution for the insertion point.
             backing.addAttributes([
-                .font: font,
-                .foregroundColor: MarkdownColors.text,
+                .font: MarkdownFonts.body,
+                .foregroundColor: UIColor.clear,
                 .paragraphStyle: para,
                 .baselineOffset: MarkdownLayout.bodyBaselineOffset,
             ], range: range)
 
-            // Hide pipe characters — MarkdownLayoutManager draws column dividers
-            // at their actual glyph positions. We keep the font so the glyph
-            // occupies space (needed for column position calculation).
-            let nsLine = backing.string as NSString
-            for offset in 0..<range.length {
-                let charIndex = range.location + offset
-                if nsLine.character(at: charIndex) == 0x7C /* "|" */ {
-                    backing.addAttribute(
-                        .foregroundColor,
-                        value: UIColor.clear,
-                        range: NSRange(location: charIndex, length: 1)
-                    )
-                }
-            }
-
-            // Store column count for LayoutManager (via a custom attribute)
-            backing.addAttribute(.tableColumnCount, value: columnCount, range: range)
+            // Store metadata for overlay management
             backing.addAttribute(.tableIsHeader, value: isHeader, range: range)
 
         case .tableSeparator:
