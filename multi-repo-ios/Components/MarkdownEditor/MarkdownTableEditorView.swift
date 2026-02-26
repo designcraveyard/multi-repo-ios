@@ -44,20 +44,15 @@ struct MarkdownTableEditorView: View {
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .ignoresSafeArea(.keyboard)
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                VStack(spacing: 0) {
-                    Spacer(minLength: 0)
-                    HStack {
-                        Spacer()
-                        MarkdownTableActionBar(
-                            model: session.model,
-                            focusedColumn: focusedColumn
-                        )
-                        Spacer()
-                    }
-                    .padding(.bottom, 16)
+            .safeAreaInset(edge: .bottom, spacing: 16) {
+                HStack {
+                    Spacer()
+                    MarkdownTableActionBar(
+                        model: session.model,
+                        focusedColumn: focusedColumn
+                    )
+                    Spacer()
                 }
-                .background(Color.clear)
             }
             .navigationTitle("Table")
             .navigationBarTitleDisplayMode(.inline)
@@ -98,6 +93,8 @@ struct MarkdownTableEditorGrid: UIViewRepresentable {
         cv.register(EditorCellView.self, forCellWithReuseIdentifier: EditorCellView.reuseID)
         cv.keyboardDismissMode = .interactive
         context.coordinator.collectionView = cv
+        // Force initial data load after the view is in the hierarchy
+        DispatchQueue.main.async { cv.reloadData() }
         return cv
     }
 
@@ -155,10 +152,8 @@ struct MarkdownTableEditorGrid: UIViewRepresentable {
         // MARK: - Layout
 
         func createLayout(for model: MarkdownTableModel) -> UICollectionViewLayout {
-            UICollectionViewCompositionalLayout { [weak self] _, environment in
-                guard self != nil else { return nil }
-                let colCount = model.columnCount
-                guard colCount > 0 else { return nil }
+            let colCount = max(1, model.columnCount)
+            return UICollectionViewCompositionalLayout { _, environment in
 
                 let availableWidth = environment.container.effectiveContentSize.width
                 let minColWidth: CGFloat = 110
