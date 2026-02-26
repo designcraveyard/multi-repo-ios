@@ -42,6 +42,7 @@ struct MarkdownTableEditorView: View {
                 model: session.model,
                 onFocusedColumnChanged: { col in focusedColumn = col }
             )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .ignoresSafeArea(.keyboard)
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 VStack(spacing: 0) {
