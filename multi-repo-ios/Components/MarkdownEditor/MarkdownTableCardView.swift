@@ -29,8 +29,8 @@ class MarkdownTableCardView: UIView {
     private let headerBG      = UIColor(Color.surfacesBaseLowContrast)
     private let bodyBG        = UIColor(Color.surfacesBasePrimary)
     private let textColor     = MarkdownColors.text
-    private let dividerColor  = UIColor(Color.borderMuted)
     private let cornerRadius: CGFloat = 8
+    private let minColWidth: CGFloat  = 100
 
     // MARK: - Init
 
@@ -55,7 +55,8 @@ class MarkdownTableCardView: UIView {
         clipsToBounds = true
 
         scrollView.isScrollEnabled = true
-        scrollView.showsHorizontalScrollIndicator = false
+        scrollView.showsHorizontalScrollIndicator = true
+        scrollView.showsVerticalScrollIndicator = false
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(scrollView)
 
@@ -74,7 +75,8 @@ class MarkdownTableCardView: UIView {
             rowStack.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
             rowStack.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
             rowStack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
-            rowStack.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
+            // Allow rowStack to grow wider than frame when columns overflow → enables horizontal scroll.
+            rowStack.widthAnchor.constraint(greaterThanOrEqualTo: scrollView.frameLayoutGuide.widthAnchor),
         ])
     }
 
@@ -92,24 +94,43 @@ class MarkdownTableCardView: UIView {
         container.translatesAutoresizingMaskIntoConstraints = false
         container.heightAnchor.constraint(equalToConstant: rowHeight).isActive = true
 
-        // Bottom border
-        let border = UIView()
-        border.backgroundColor = dividerColor
-        border.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(border)
+        // Bottom border (1pt, matches editor cell border)
+        let bottomBorder = UIView()
+        bottomBorder.backgroundColor = borderColor
+        bottomBorder.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(bottomBorder)
         NSLayoutConstraint.activate([
-            border.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            border.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            border.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-            border.heightAnchor.constraint(equalToConstant: 0.5),
+            bottomBorder.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            bottomBorder.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            bottomBorder.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            bottomBorder.heightAnchor.constraint(equalToConstant: 1),
         ])
 
         guard !cells.isEmpty else { return container }
 
-        // Build equal-width columns
-        var prevAnchor = container.leadingAnchor
+        // Horizontal stack: fillEqually with min column width — enables horizontal scroll.
+        let colStack = UIStackView()
+        colStack.axis = .horizontal
+        colStack.distribution = .fillEqually
+        colStack.spacing = 0
+        colStack.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(colStack)
+        NSLayoutConstraint.activate([
+            colStack.topAnchor.constraint(equalTo: container.topAnchor),
+            colStack.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            colStack.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            colStack.bottomAnchor.constraint(equalTo: bottomBorder.topAnchor),
+        ])
+
         for (colIdx, text) in cells.enumerated() {
             let isHeaderCell = isHeaderRow || (hasHeaderColumn && colIdx == 0)
+
+            let cell = UIView()
+            cell.backgroundColor = (hasHeaderColumn && colIdx == 0 && !isHeaderRow) ? headerBG : .clear
+            cell.translatesAutoresizingMaskIntoConstraints = false
+            // Min column width — when exceeded, horizontal scroll activates on the card.
+            cell.widthAnchor.constraint(greaterThanOrEqualToConstant: minColWidth).isActive = true
+
             let label = UILabel()
             label.text = text
             label.font = isHeaderCell
@@ -118,42 +139,30 @@ class MarkdownTableCardView: UIView {
             label.textColor = textColor
             label.lineBreakMode = .byTruncatingTail
             label.numberOfLines = 1
-            label.backgroundColor = (hasHeaderColumn && colIdx == 0 && !isHeaderRow) ? headerBG : .clear
             label.translatesAutoresizingMaskIntoConstraints = false
-            container.addSubview(label)
-
+            cell.addSubview(label)
             NSLayoutConstraint.activate([
-                label.topAnchor.constraint(equalTo: container.topAnchor),
-                label.bottomAnchor.constraint(equalTo: border.topAnchor),
-                label.leadingAnchor.constraint(equalTo: prevAnchor, constant: cellHPad),
+                label.topAnchor.constraint(equalTo: cell.topAnchor),
+                label.bottomAnchor.constraint(equalTo: cell.bottomAnchor),
+                label.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: cellHPad),
+                label.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -cellHPad),
             ])
 
-            if colIdx == cells.count - 1 {
-                // Last column: pin to trailing edge
-                label.trailingAnchor.constraint(
-                    equalTo: container.trailingAnchor, constant: -cellHPad
-                ).isActive = true
-            } else {
-                // Equal fractional width
-                label.widthAnchor.constraint(
-                    equalTo: container.widthAnchor,
-                    multiplier: 1.0 / CGFloat(cells.count),
-                    constant: -(cellHPad * 2)
-                ).isActive = true
-
-                // Vertical divider
+            // Right border between columns (1pt, matches editor)
+            if colIdx < cells.count - 1 {
                 let divider = UIView()
-                divider.backgroundColor = dividerColor
+                divider.backgroundColor = borderColor
                 divider.translatesAutoresizingMaskIntoConstraints = false
-                container.addSubview(divider)
+                cell.addSubview(divider)
                 NSLayoutConstraint.activate([
-                    divider.widthAnchor.constraint(equalToConstant: 0.5),
-                    divider.topAnchor.constraint(equalTo: container.topAnchor),
-                    divider.bottomAnchor.constraint(equalTo: border.topAnchor),
-                    divider.leadingAnchor.constraint(equalTo: label.trailingAnchor, constant: cellHPad),
+                    divider.widthAnchor.constraint(equalToConstant: 1),
+                    divider.topAnchor.constraint(equalTo: cell.topAnchor),
+                    divider.bottomAnchor.constraint(equalTo: cell.bottomAnchor),
+                    divider.trailingAnchor.constraint(equalTo: cell.trailingAnchor),
                 ])
-                prevAnchor = divider.trailingAnchor
             }
+
+            colStack.addArrangedSubview(cell)
         }
         return container
     }

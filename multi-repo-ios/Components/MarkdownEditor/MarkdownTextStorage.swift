@@ -98,7 +98,10 @@ class MarkdownTextStorage: NSTextStorage {
 
     func applyMarkdownFormatting() {
         let fullRange = NSRange(location: 0, length: length)
-        guard fullRange.length > 0 else { return }
+        guard fullRange.length > 0 else {
+            lineBlocks = []
+            return
+        }
 
         // Preserve image attachments before resetting attributes.
         // processEditing wipes all attributes; without this, NSTextAttachment

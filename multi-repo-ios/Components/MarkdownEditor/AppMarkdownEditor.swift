@@ -1024,13 +1024,17 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
             guard let textView = textView,
                   let storage = textStorage else { return }
 
+            // Always remove all existing cards — stale model refs cause ghost/duplicate cards.
+            for entry in tableCardOverlays { entry.card.removeFromSuperview() }
+            tableCardOverlays = []
+
             let layoutManager = textView.layoutManager
             let container = textView.textContainer
             let inset = textView.textContainerInset
             let groups = storage.tableGroups()
             let storageLength = storage.length
 
-            var newOverlays: [(groupRange: NSRange, card: MarkdownTableCardView)] = []
+            print("[Table] updateTableOverlays — \(groups.count) group(s), storage length \(storageLength)")
 
             for group in groups {
                 guard NSMaxRange(group) <= storageLength else { continue }
@@ -1059,42 +1063,36 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
                 )
 
                 let groupText = (storage.string as NSString).substring(with: group)
-
-                if let existing = tableCardOverlays.first(where: {
-                    NSIntersectionRange($0.groupRange, group).length > 0
-                }) {
-                    existing.card.frame = cardRect
-                    existing.card.refresh()
-                    newOverlays.append((group, existing.card))
-                    tableCardOverlays.removeAll { $0.card === existing.card }
-                } else {
-                    guard let model = MarkdownTableModel.fromMarkdown(groupText) else { continue }
-                    let card = MarkdownTableCardView(model: model)
-                    card.frame = cardRect
-
-                    card.onTap = { [weak self] in
-                        guard let self else { return }
-                        let copy = model.copy()
-                        self.parent.onOpenTableEditor?(copy, group, 0)
-                    }
-
-                    card.onDelete = { [weak self] in
-                        guard let self,
-                              let storage = self.textStorage,
-                              NSMaxRange(group) <= storage.length else { return }
-                        storage.replaceCharacters(in: group, with: "")
-                        self.parent.text = storage.string
-                        DispatchQueue.main.async { self.updateTableOverlays() }
-                    }
-
-                    textView.addSubview(card)
-                    newOverlays.append((group, card))
+                guard let model = MarkdownTableModel.fromMarkdown(groupText) else {
+                    print("[Table] updateTableOverlays — failed to parse model for group \(group)")
+                    continue
                 }
-            }
 
-            // Remove stale cards
-            for stale in tableCardOverlays { stale.card.removeFromSuperview() }
-            tableCardOverlays = newOverlays
+                print("[Table] updateTableOverlays — card \(model.rowCount)×\(model.columnCount) at loc \(group.location) len \(group.length)")
+
+                let card = MarkdownTableCardView(model: model)
+                card.frame = cardRect
+
+                card.onTap = { [weak self] in
+                    guard let self else { return }
+                    print("[Table] card tapped — opening editor, group loc \(group.location) len \(group.length), \(model.rowCount)×\(model.columnCount)")
+                    let copy = model.copy()
+                    self.parent.onOpenTableEditor?(copy, group, 0)
+                }
+
+                card.onDelete = { [weak self] in
+                    guard let self,
+                          let storage = self.textStorage,
+                          NSMaxRange(group) <= storage.length else { return }
+                    print("[Table] card deleted — group loc \(group.location) len \(group.length)")
+                    storage.replaceCharacters(in: group, with: "")
+                    self.parent.text = storage.string
+                    DispatchQueue.main.async { self.updateTableOverlays() }
+                }
+
+                textView.addSubview(card)
+                tableCardOverlays.append((group, card))
+            }
         }
 
         // MARK: - Table Commit
@@ -1103,24 +1101,36 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
             guard let storage = textStorage else { return }
 
             let newMarkdown = model.toMarkdown() + "\n"
+            var newCursorPos: Int
 
             if let groupRange = groupRange {
                 guard groupRange.location <= storage.length else { return }
                 let safeLength = min(groupRange.length, storage.length - groupRange.location)
                 guard safeLength >= 0 else { return }
+                print("[Table] commitTableEdit — replacing group loc \(groupRange.location) len \(groupRange.length), new markdown \(newMarkdown.count) chars")
                 storage.replaceCharacters(
                     in: NSRange(location: groupRange.location, length: safeLength),
                     with: newMarkdown)
+                newCursorPos = groupRange.location + newMarkdown.count
             } else {
                 let insertPoint = min(cursorPosition, storage.length)
                 let nsString = storage.string as NSString
                 let prefix = insertPoint > 0 && nsString.character(at: insertPoint - 1) != 0x0A ? "\n" : ""
+                let fullInsert = prefix + newMarkdown
+                print("[Table] commitTableEdit — inserting new table at \(insertPoint), \(fullInsert.count) chars")
                 storage.replaceCharacters(
                     in: NSRange(location: insertPoint, length: 0),
-                    with: prefix + newMarkdown)
+                    with: fullInsert)
+                newCursorPos = insertPoint + fullInsert.count
             }
 
             parent.text = storage.string
+
+            // Move cursor to just after the inserted/replaced table content.
+            let safeCursor = min(newCursorPos, storage.length)
+            print("[Table] commitTableEdit — setting cursor to \(safeCursor)")
+            textView?.selectedRange = NSRange(location: safeCursor, length: 0)
+
             DispatchQueue.main.async { [weak self] in self?.updateTableOverlays() }
         }
 
