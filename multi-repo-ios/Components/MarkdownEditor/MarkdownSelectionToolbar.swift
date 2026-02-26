@@ -28,6 +28,7 @@ class MarkdownSelectionToolbar: UIView {
         ButtonSpec(icon: "italic", label: "Italic", action: .italic, dividerAfter: false),
         ButtonSpec(icon: "underline", label: "Underline", action: .underline, dividerAfter: false),
         ButtonSpec(icon: "strikethrough", label: "Strikethrough", action: .strikethrough, dividerAfter: false),
+        ButtonSpec(icon: "highlighter", label: "Highlight", action: .highlight, dividerAfter: false),
         ButtonSpec(icon: "chevron.left.forwardslash.chevron.right", label: "Code", action: .inlineCode, dividerAfter: true),
         ButtonSpec(icon: "link", label: "Link", action: .link, dividerAfter: true),
         ButtonSpec(icon: "textformat.size.larger", label: "H1", action: .heading1, dividerAfter: false),

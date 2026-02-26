@@ -17,6 +17,9 @@ class MarkdownLayoutManager: NSLayoutManager {
     // MARK: - Glyph Drawing
 
     override func drawGlyphs(forGlyphRange glyphsToShow: NSRange, at origin: CGPoint) {
+        // Draw highlight backgrounds BEFORE text so text renders on top
+        drawHighlightBackgrounds(forGlyphRange: glyphsToShow, at: origin)
+
         super.drawGlyphs(forGlyphRange: glyphsToShow, at: origin)
 
         guard let storage = markdownStorage,
@@ -69,6 +72,40 @@ class MarkdownLayoutManager: NSLayoutManager {
         // Flush final table group
         if !tableGroup.isEmpty {
             drawTableGrid(rows: tableGroup, origin: origin, container: container)
+        }
+    }
+
+    // MARK: - Highlight Backgrounds
+
+    /// Scans for the custom `.highlightBackground` attribute and draws rounded rects
+    /// behind the text. Called before `super.drawGlyphs` so text renders on top.
+    private func drawHighlightBackgrounds(forGlyphRange glyphsToShow: NSRange, at origin: CGPoint) {
+        guard let storage = textStorage,
+              let container = textContainers.first else { return }
+
+        let charRange = characterRange(forGlyphRange: glyphsToShow, actualGlyphRange: nil)
+
+        storage.enumerateAttribute(.highlightBackground, in: charRange, options: []) { value, attrRange, _ in
+            guard let color = value as? UIColor else { return }
+
+            let glyphRange = self.glyphRange(forCharacterRange: attrRange, actualCharacterRange: nil)
+
+            // Enumerate line fragments to handle highlights that wrap across lines
+            self.enumerateLineFragments(forGlyphRange: glyphRange) { _, usedRect, _, effectiveGlyphRange, _ in
+                let intersection = NSIntersectionRange(glyphRange, effectiveGlyphRange)
+                guard intersection.length > 0 else { return }
+
+                var boundingRect = self.boundingRect(forGlyphRange: intersection, in: container)
+                boundingRect.origin.x += origin.x
+                boundingRect.origin.y += origin.y
+
+                let path = UIBezierPath(
+                    roundedRect: boundingRect,
+                    cornerRadius: MarkdownLayout.highlightCornerRadius
+                )
+                color.setFill()
+                path.fill()
+            }
         }
     }
 

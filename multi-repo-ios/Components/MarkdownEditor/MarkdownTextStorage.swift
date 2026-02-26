@@ -18,6 +18,10 @@ extension NSAttributedString.Key {
     static let tableColumnCount = NSAttributedString.Key("md.tableColumnCount")
     /// Whether this table row is the header row (Bool).
     static let tableIsHeader = NSAttributedString.Key("md.tableIsHeader")
+    /// Custom highlight background for ==text== spans (UIColor).
+    /// NOT using system .backgroundColor — that draws sharp rects.
+    /// MarkdownLayoutManager reads this key and draws rounded rects instead.
+    static let highlightBackground = NSAttributedString.Key("md.highlightBackground")
 }
 
 // MARK: - Block Type
@@ -120,21 +124,48 @@ class MarkdownTextStorage: NSTextStorage {
     // MARK: - Typing Attributes
 
     /// Returns appropriate typing attributes for the cursor at the given position.
-    /// Used to fix cursor height: body lines get body font, heading lines get heading font.
+    /// Used to fix cursor height and ensure typed characters are visible.
+    /// Heading lines get heading font; table rows get body font with visible text color
+    /// (critical: without this, typed text inside table cells inherits hidden/border styling).
     func typingAttributes(at position: Int) -> [NSAttributedString.Key: Any] {
         var font: UIFont = MarkdownFonts.body
+        var color: UIColor = MarkdownColors.text
+        var para = defaultParagraphStyle()
+
         for (lineRange, block) in lineBlocks {
             if position >= lineRange.location && position <= NSMaxRange(lineRange) {
-                if case .heading(let level) = block {
+                switch block {
+                case .heading(let level):
                     font = MarkdownFonts.heading(level: level)
+                case .tableRow:
+                    // Determine if this is a header row
+                    if let idx = lineBlocks.firstIndex(where: { $0.range == lineRange }),
+                       idx + 1 < lineBlocks.count,
+                       lineBlocks[idx + 1].block == .tableSeparator {
+                        font = MarkdownFonts.bodyBold
+                    } else {
+                        font = MarkdownFonts.body
+                    }
+                    color = MarkdownColors.text
+                    let tablePara = NSMutableParagraphStyle()
+                    tablePara.minimumLineHeight = MarkdownLayout.bodyLineHeight
+                    tablePara.maximumLineHeight = MarkdownLayout.bodyLineHeight
+                    tablePara.paragraphSpacing = 0
+                    para = tablePara
+                case .tableSeparator:
+                    font = MarkdownFonts.body
+                    color = MarkdownColors.tableBorder
+                default:
+                    break
                 }
                 break
             }
         }
         return [
             .font: font,
-            .foregroundColor: MarkdownColors.text,
-            .paragraphStyle: defaultParagraphStyle(),
+            .foregroundColor: color,
+            .paragraphStyle: para,
+            .baselineOffset: MarkdownLayout.bodyBaselineOffset,
         ]
     }
 
@@ -437,6 +468,12 @@ class MarkdownTextStorage: NSTextStorage {
             para.minimumLineHeight = MarkdownLayout.bodyLineHeight
             para.maximumLineHeight = MarkdownLayout.bodyLineHeight
             para.paragraphSpacing = 0
+
+            // Apply uniform style to the ENTIRE row first — this ensures every
+            // character (including newly typed ones) gets visible text color and
+            // the correct font. This is critical: processEditing() re-runs on
+            // every keystroke, and per-character styling can interfere with the
+            // text system's attribute resolution for the insertion point.
             backing.addAttributes([
                 .font: font,
                 .foregroundColor: MarkdownColors.text,
@@ -444,9 +481,19 @@ class MarkdownTextStorage: NSTextStorage {
                 .baselineOffset: MarkdownLayout.bodyBaselineOffset,
             ], range: range)
 
-            // Hide all pipe characters — grid is drawn by MarkdownLayoutManager
-            for (i, ch) in line.enumerated() where ch == "|" {
-                backing.addAttributes(Self.hiddenAttrs, range: NSRange(location: range.location + i, length: 1))
+            // Now color ONLY the pipe characters using NSString character-at-index
+            // (not Swift String enumeration) to avoid Unicode offset mismatches.
+            // We set foregroundColor only — font stays uniform from above.
+            let nsLine = backing.string as NSString
+            for offset in 0..<range.length {
+                let charIndex = range.location + offset
+                if nsLine.character(at: charIndex) == 0x7C /* "|" */ {
+                    backing.addAttribute(
+                        .foregroundColor,
+                        value: MarkdownColors.tableBorder,
+                        range: NSRange(location: charIndex, length: 1)
+                    )
+                }
             }
 
             // Store column count for LayoutManager (via a custom attribute)
@@ -454,12 +501,19 @@ class MarkdownTextStorage: NSTextStorage {
             backing.addAttribute(.tableIsHeader, value: isHeader, range: range)
 
         case .tableSeparator:
-            // Hide the separator row entirely — just a thin line drawn by MarkdownLayoutManager
-            backing.addAttributes(Self.hiddenAttrs, range: range)
+            // Style separator row as muted border-colored text (visible but de-emphasized).
+            // Hiding it entirely breaks editing: processEditing() re-parses on each keystroke
+            // and a fully-hidden separator can cause table row misclassification.
             let para = NSMutableParagraphStyle()
-            para.minimumLineHeight = 4
-            para.maximumLineHeight = 4
-            backing.addAttribute(.paragraphStyle, value: para, range: range)
+            para.minimumLineHeight = MarkdownLayout.bodyLineHeight
+            para.maximumLineHeight = MarkdownLayout.bodyLineHeight
+            para.paragraphSpacing = 0
+            backing.addAttributes([
+                .font: MarkdownFonts.body,
+                .foregroundColor: MarkdownColors.tableBorder,
+                .paragraphStyle: para,
+                .baselineOffset: MarkdownLayout.bodyBaselineOffset,
+            ], range: range)
 
         case .paragraph:
             break
@@ -488,8 +542,10 @@ class MarkdownTextStorage: NSTextStorage {
         let text = backing.string
         let nsText = text as NSString
 
-        // Determine code block ranges to skip inline formatting
-        var codeRanges: [NSRange] = []
+        // Determine code block and table ranges to skip inline formatting.
+        // Table rows contain pipe characters that can interfere with inline
+        // regex patterns (e.g. bold ** or strikethrough ~~), so we exclude them.
+        var skipRanges: [NSRange] = []
         var inCode = false
         var codeStart = 0
         for (range, block) in lineBlocks {
@@ -499,14 +555,16 @@ class MarkdownTextStorage: NSTextStorage {
                 codeStart = range.location
             case .codeFenceClose:
                 inCode = false
-                codeRanges.append(NSRange(location: codeStart, length: NSMaxRange(range) - codeStart))
+                skipRanges.append(NSRange(location: codeStart, length: NSMaxRange(range) - codeStart))
+            case .tableRow, .tableSeparator:
+                skipRanges.append(range)
             default:
                 break
             }
         }
 
         func isInCodeBlock(_ range: NSRange) -> Bool {
-            codeRanges.contains { NSIntersectionRange($0, range).length > 0 }
+            skipRanges.contains { NSIntersectionRange($0, range).length > 0 }
         }
 
         // Bold+Italic: ***text*** — MUST come before bold and italic
@@ -533,6 +591,11 @@ class MarkdownTextStorage: NSTextStorage {
         // Underline: ++text++ — extended markdown syntax
         applyInlineHidden(nsText: nsText, pattern: "\\+\\+(.+?)\\+\\+", markerLen: 2, isInCodeBlock: isInCodeBlock) { contentRange in
             self.backing.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: contentRange)
+        }
+
+        // Highlight: ==text== — custom background drawn by MarkdownLayoutManager
+        applyInlineHidden(nsText: nsText, pattern: "==(.+?)==", markerLen: 2, isInCodeBlock: isInCodeBlock) { contentRange in
+            self.backing.addAttribute(.highlightBackground, value: MarkdownColors.highlightBackground, range: contentRange)
         }
 
         // Strikethrough: ~~text~~

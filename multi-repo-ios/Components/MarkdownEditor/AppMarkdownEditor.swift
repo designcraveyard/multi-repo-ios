@@ -240,6 +240,9 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
             toolbar.onAction = { action in
                 context.coordinator.handleToolbarAction(action, in: textView)
             }
+            toolbar.onDismissKeyboard = { [weak textView] in
+                textView?.resignFirstResponder()
+            }
             textView.inputAccessoryView = toolbar
         }
 
@@ -301,6 +304,11 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
         private var floatingToolbar: MarkdownKeyboardToolbar?
         private var floatingToolbarBottomConstraint: NSLayoutConstraint?
 
+        // AI features
+        private var audioRecorder: AppAudioRecorder?
+        private var isRecording = false
+        private var isTranscribing = false
+
         init(_ parent: MarkdownEditorRepresentable) {
             self.parent = parent
         }
@@ -319,12 +327,12 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
             }
             toolbar.translatesAutoresizingMaskIntoConstraints = false
             toolbar.alpha = 0
-            toolbar.layer.cornerRadius = 22
+            toolbar.layer.cornerRadius = 26
             toolbar.clipsToBounds = true
             toolbar.layer.shadowColor = UIColor.black.cgColor
-            toolbar.layer.shadowOpacity = 0.12
-            toolbar.layer.shadowOffset = CGSize(width: 0, height: 2)
-            toolbar.layer.shadowRadius = 8
+            toolbar.layer.shadowOpacity = 0.08
+            toolbar.layer.shadowOffset = CGSize(width: 0, height: 4)
+            toolbar.layer.shadowRadius = 12
             toolbar.layer.masksToBounds = false
 
             textView.addSubview(toolbar)
@@ -401,6 +409,14 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
                 }
                 return false
             }
+
+            // Pre-set typing attributes BEFORE the text system inserts the character.
+            // This is critical for table cells: without this, a character typed next
+            // to a pipe inherits the pipe's tableBorder color because processEditing()
+            // (which fixes colors) runs AFTER insertion. By setting typingAttributes
+            // here, the inserted character gets visible text color immediately.
+            textView.typingAttributes = storage.typingAttributes(at: range.location)
+
             return true
         }
 
@@ -436,39 +452,39 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
                 return UIMenu(children: [selectAllMenu] + suggestedActions)
             }
 
-            // Inline formatting actions — shown FIRST
+            // Inline formatting actions — shown FIRST (icon-only, titles kept for accessibility)
             let formatActions = UIMenu(title: "", options: .displayInline, children: [
-                UIAction(title: "Bold", image: UIImage(systemName: "bold")) { [weak self] _ in
+                UIAction(title: "", image: UIImage(systemName: "bold"), handler: { [weak self] _ in
                     self?.handleToolbarAction(.bold, in: textView)
-                },
-                UIAction(title: "Italic", image: UIImage(systemName: "italic")) { [weak self] _ in
+                }),
+                UIAction(title: "", image: UIImage(systemName: "italic"), handler: { [weak self] _ in
                     self?.handleToolbarAction(.italic, in: textView)
-                },
-                UIAction(title: "Underline", image: UIImage(systemName: "underline")) { [weak self] _ in
+                }),
+                UIAction(title: "", image: UIImage(systemName: "underline"), handler: { [weak self] _ in
                     self?.handleToolbarAction(.underline, in: textView)
-                },
-                UIAction(title: "Strikethrough", image: UIImage(systemName: "strikethrough")) { [weak self] _ in
+                }),
+                UIAction(title: "", image: UIImage(systemName: "strikethrough"), handler: { [weak self] _ in
                     self?.handleToolbarAction(.strikethrough, in: textView)
-                },
-                UIAction(title: "Code", image: UIImage(systemName: "chevron.left.forwardslash.chevron.right")) { [weak self] _ in
+                }),
+                UIAction(title: "", image: UIImage(systemName: "chevron.left.forwardslash.chevron.right"), handler: { [weak self] _ in
                     self?.handleToolbarAction(.inlineCode, in: textView)
-                },
-                UIAction(title: "Link", image: UIImage(systemName: "link")) { [weak self] _ in
+                }),
+                UIAction(title: "", image: UIImage(systemName: "link"), handler: { [weak self] _ in
                     self?.handleToolbarAction(.link, in: textView)
-                },
+                }),
             ])
 
-            // Heading submenu
-            let headingMenu = UIMenu(title: "Heading", image: UIImage(systemName: "textformat.size"), children: [
-                UIAction(title: "Heading 1") { [weak self] _ in
+            // Heading submenu (icon on parent, short labels + icons in children)
+            let headingMenu = UIMenu(title: "", image: UIImage(systemName: "textformat.size"), children: [
+                UIAction(title: "H1", image: UIImage(systemName: "textformat.size.larger"), handler: { [weak self] _ in
                     self?.handleToolbarAction(.heading1, in: textView)
-                },
-                UIAction(title: "Heading 2") { [weak self] _ in
+                }),
+                UIAction(title: "H2", image: UIImage(systemName: "textformat.size"), handler: { [weak self] _ in
                     self?.handleToolbarAction(.heading2, in: textView)
-                },
-                UIAction(title: "Heading 3") { [weak self] _ in
+                }),
+                UIAction(title: "H3", image: UIImage(systemName: "textformat.size.smaller"), handler: { [weak self] _ in
                     self?.handleToolbarAction(.heading3, in: textView)
-                },
+                }),
             ])
 
             // Formatting first, then headings, then Select All, then system actions
@@ -537,6 +553,8 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
                 toggleWrap(textView: textView, prefix: "++", suffix: "++")
             case .strikethrough:
                 toggleWrap(textView: textView, prefix: "~~", suffix: "~~")
+            case .highlight:
+                toggleWrap(textView: textView, prefix: "==", suffix: "==")
             case .inlineCode:
                 toggleWrap(textView: textView, prefix: "`", suffix: "`")
             case .heading1:
@@ -545,6 +563,9 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
                 insertLinePrefix(textView: textView, prefix: "## ", storage: storage)
             case .heading3:
                 insertLinePrefix(textView: textView, prefix: "### ", storage: storage)
+            case .headingPicker:
+                showHeadingPicker(in: textView, storage: storage)
+                return
             case .bulletList:
                 insertLinePrefix(textView: textView, prefix: "- ", storage: storage)
             case .orderedList:
@@ -567,18 +588,40 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
                 showLinkPopover(textView: textView, storage: storage, range: range)
                 return // Don't sync text immediately — alert handles it
             case .table:
-                let table = "| Column 1 | Column 2 | Column 3 |\n| --- | --- | --- |\n| | | |\n"
+                let table = "| Column 1 | Column 2 | Column 3 |\n| --- | --- | --- |\n|  |  |  |"
                 storage.replaceCharacters(in: range, with: table)
-                textView.selectedRange = NSRange(location: range.location + table.count, length: 0)
+                // Place cursor in the first data cell (after the third row's "| ")
+                let dataRowStart = range.location + "| Column 1 | Column 2 | Column 3 |\n| --- | --- | --- |\n| ".count
+                textView.selectedRange = NSRange(location: dataRowStart, length: 0)
             case .indent:
                 _ = MarkdownInputProcessor.process(textView: textView, range: range, replacementText: "\t", textStorage: storage)
             case .outdent:
-                let nsString = storage.string as NSString
-                let lineRange = nsString.lineRange(for: range)
-                let line = nsString.substring(with: lineRange)
-                if line.hasPrefix("  ") {
-                    storage.replaceCharacters(in: NSRange(location: lineRange.location, length: 2), with: "")
+                // In a table row, Shift+Tab moves to the previous cell
+                let currentBlock = blockAtCursor(range.location, storage: storage)
+                if case .tableRow = currentBlock {
+                    let nsString = storage.string as NSString
+                    var pos = range.location - 1
+                    if pos >= 0 && nsString.substring(with: NSRange(location: pos, length: 1)) == "|" { pos -= 1 }
+                    while pos >= 0 && nsString.substring(with: NSRange(location: pos, length: 1)) != "|" { pos -= 1 }
+                    if pos >= 0 {
+                        let target = pos + 1
+                        let cursorPos = target < nsString.length && nsString.substring(with: NSRange(location: target, length: 1)) == " " ? target + 1 : target
+                        textView.selectedRange = NSRange(location: cursorPos, length: 0)
+                    }
+                } else {
+                    let nsString = storage.string as NSString
+                    let lineRange = nsString.lineRange(for: range)
+                    let line = nsString.substring(with: lineRange)
+                    if line.hasPrefix("  ") {
+                        storage.replaceCharacters(in: NSRange(location: lineRange.location, length: 2), with: "")
+                    }
                 }
+            case .aiTranscribe:
+                handleTranscribe(in: textView)
+                return // Don't sync text immediately — async handlers manage it
+            case .aiTransform:
+                handleAITransform(in: textView)
+                return // Don't sync text immediately — async handlers manage it
             }
 
             DispatchQueue.main.async { [weak self] in
@@ -653,6 +696,57 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
 
             storage.replaceCharacters(in: NSRange(location: lineRange.location, length: 0), with: prefix)
             textView.selectedRange = NSRange(location: textView.selectedRange.location + prefix.count, length: 0)
+        }
+
+        // MARK: - Heading Picker
+
+        private func showHeadingPicker(in textView: UITextView, storage: MarkdownTextStorage) {
+            guard let viewController = textView.window?.rootViewController?.presentedViewController
+                    ?? textView.window?.rootViewController else { return }
+
+            let alert = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
+
+            let headings: [(String, String)] = [
+                ("Heading 1", "# "),
+                ("Heading 2", "## "),
+                ("Heading 3", "### "),
+                ("Body", ""),
+            ]
+
+            for (title, prefix) in headings {
+                alert.addAction(UIAlertAction(title: title, style: .default) { [weak self] _ in
+                    guard let self else { return }
+                    if prefix.isEmpty {
+                        // Remove any existing heading prefix
+                        let nsString = storage.string as NSString
+                        let lineRange = nsString.lineRange(for: textView.selectedRange)
+                        let line = nsString.substring(with: lineRange)
+                        let trimmed = line.trimmingCharacters(in: .whitespaces)
+                        var hashCount = 0
+                        for ch in trimmed { if ch == "#" { hashCount += 1 } else { break } }
+                        if hashCount > 0 {
+                            let removeLen = min(hashCount + 1, lineRange.length) // "### "
+                            storage.replaceCharacters(in: NSRange(location: lineRange.location, length: removeLen), with: "")
+                        }
+                    } else {
+                        self.insertLinePrefix(textView: textView, prefix: prefix, storage: storage)
+                    }
+                    DispatchQueue.main.async { [weak self] in
+                        self?.parent.text = textView.textStorage.string
+                        self?.updatePlaceholder(textView)
+                    }
+                })
+            }
+
+            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+
+            if let popover = alert.popoverPresentationController {
+                popover.sourceView = textView
+                let caretRect = textView.caretRect(for: textView.selectedTextRange?.start ?? textView.beginningOfDocument)
+                popover.sourceRect = caretRect
+            }
+
+            viewController.present(alert, animated: true)
         }
 
         // MARK: - Link Popover
@@ -733,6 +827,265 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
             let size = textView.sizeThatFits(CGSize(width: textView.bounds.width, height: .greatestFiniteMagnitude))
             let newHeight = max(parent.minHeight, size.height)
             parent.onHeightChange(newHeight)
+        }
+
+        // MARK: - Block Type Helper
+
+        /// Returns the block type at the given cursor position.
+        private func blockAtCursor(_ position: Int, storage: MarkdownTextStorage) -> MarkdownBlockType {
+            for (lineRange, block) in storage.lineBlocks {
+                if position >= lineRange.location && position <= NSMaxRange(lineRange) {
+                    return block
+                }
+            }
+            return .paragraph
+        }
+
+        // MARK: - AI Transcribe
+
+        private func handleTranscribe(in textView: UITextView) {
+            if isRecording {
+                stopRecordingAndTranscribe(in: textView)
+            } else {
+                startRecording(in: textView)
+            }
+        }
+
+        private func startRecording(in textView: UITextView) {
+            let recorder = AppAudioRecorder()
+            self.audioRecorder = recorder
+            Task {
+                do {
+                    try await recorder.startRecording()
+                    isRecording = true
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    updateTranscribeButton(recording: true)
+                } catch {
+                    print("Recording failed: \(error)")
+                }
+            }
+        }
+
+        private func stopRecordingAndTranscribe(in textView: UITextView) {
+            guard let recorder = audioRecorder else { return }
+            isRecording = false
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            updateTranscribeButton(recording: false)
+
+            Task {
+                do {
+                    let audioData = try recorder.stopRecording()
+                    isTranscribing = true
+                    updateTranscribeButton(transcribing: true)
+
+                    let result = try await TranscribeService.shared.transcribe(audioData: audioData)
+
+                    isTranscribing = false
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                    updateTranscribeButton(transcribing: false)
+
+                    // Insert transcribed text at cursor position
+                    guard let storage = textStorage else { return }
+                    let insertionPoint = textView.selectedRange.location
+                    storage.replaceCharacters(in: NSRange(location: insertionPoint, length: 0), with: result.text)
+                    textView.selectedRange = NSRange(location: insertionPoint + result.text.count, length: 0)
+
+                    parent.text = textView.textStorage.string
+                    updatePlaceholder(textView)
+                } catch {
+                    isTranscribing = false
+                    UINotificationFeedbackGenerator().notificationOccurred(.error)
+                    updateTranscribeButton(transcribing: false)
+                    print("Transcription failed: \(error)")
+                }
+            }
+        }
+
+        private func updateTranscribeButton(recording: Bool = false, transcribing: Bool = false) {
+            guard let textView = textView else { return }
+
+            func applyToToolbar(_ toolbar: MarkdownKeyboardToolbar) {
+                if transcribing {
+                    toolbar.setSpinner(action: .aiTranscribe, visible: true)
+                } else {
+                    toolbar.setSpinner(action: .aiTranscribe, visible: false)
+                    let icon = recording ? "stop.circle.fill" : "mic.fill"
+                    let tintColor: UIColor = recording ? .systemRed : UIColor.label.withAlphaComponent(0.7)
+                    toolbar.updateButton(action: .aiTranscribe, icon: icon, tintColor: tintColor)
+                }
+            }
+
+            if let toolbar = textView.inputAccessoryView as? MarkdownKeyboardToolbar {
+                applyToToolbar(toolbar)
+            }
+            if let toolbar = floatingToolbar {
+                applyToToolbar(toolbar)
+            }
+        }
+
+        private func updateTransformButton(transforming: Bool) {
+            guard let textView = textView else { return }
+
+            func applyToToolbar(_ toolbar: MarkdownKeyboardToolbar) {
+                if transforming {
+                    toolbar.setSpinner(action: .aiTransform, visible: true)
+                } else {
+                    toolbar.setSpinner(action: .aiTransform, visible: false)
+                    toolbar.updateButton(action: .aiTransform, icon: "sparkles", tintColor: UIColor.label.withAlphaComponent(0.7))
+                }
+            }
+
+            if let toolbar = textView.inputAccessoryView as? MarkdownKeyboardToolbar {
+                applyToToolbar(toolbar)
+            }
+            if let toolbar = floatingToolbar {
+                applyToToolbar(toolbar)
+            }
+        }
+
+        // MARK: - AI Transform
+
+        private func handleAITransform(in textView: UITextView) {
+            guard let viewController = textView.window?.rootViewController?.presentedViewController
+                    ?? textView.window?.rootViewController else { return }
+
+            let hasSelection = textView.selectedRange.length > 0
+            let selectedText = hasSelection
+                ? (textView.textStorage.string as NSString).substring(with: textView.selectedRange)
+                : ""
+            let fullText = textView.textStorage.string
+            let contextText = hasSelection ? selectedText : fullText
+
+            guard !contextText.isEmpty else { return }
+
+            let alert = UIAlertController(title: "AI Transform", message: nil, preferredStyle: .actionSheet)
+
+            let options: [(String, TransformConfig)] = [
+                ("Summarise", MarkdownTransformConfig.summarise),
+                ("Key Pointers", MarkdownTransformConfig.keyPointers),
+                ("List Actions", MarkdownTransformConfig.listActions),
+            ]
+
+            for (title, config) in options {
+                alert.addAction(UIAlertAction(title: title, style: .default) { [weak self] _ in
+                    self?.runTransform(config: config, text: contextText, hasSelection: hasSelection, in: textView)
+                })
+            }
+
+            alert.addAction(UIAlertAction(title: "Custom\u{2026}", style: .default) { [weak self] _ in
+                self?.showCustomTransformPrompt(contextText: contextText, hasSelection: hasSelection, in: textView)
+            })
+
+            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+
+            // iPad popover anchor
+            if let popover = alert.popoverPresentationController {
+                popover.sourceView = textView
+                let caretRect = textView.caretRect(for: textView.selectedTextRange?.start ?? textView.beginningOfDocument)
+                popover.sourceRect = caretRect
+            }
+
+            viewController.present(alert, animated: true)
+        }
+
+        private func showCustomTransformPrompt(contextText: String, hasSelection: Bool, in textView: UITextView) {
+            guard let viewController = textView.window?.rootViewController?.presentedViewController
+                    ?? textView.window?.rootViewController else { return }
+
+            let alert = UIAlertController(title: "Custom Transform", message: "Enter your transformation instruction:", preferredStyle: .alert)
+            alert.addTextField { tf in
+                tf.placeholder = "e.g., Make it more concise"
+                tf.autocapitalizationType = .sentences
+            }
+
+            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+            alert.addAction(UIAlertAction(title: "Transform", style: .default) { [weak self] _ in
+                guard let prompt = alert.textFields?.first?.text, !prompt.isEmpty else { return }
+                let config = MarkdownTransformConfig.custom(prompt: prompt)
+                self?.runTransform(config: config, text: contextText, hasSelection: hasSelection, in: textView)
+            })
+
+            viewController.present(alert, animated: true)
+        }
+
+        private func runTransform(config: TransformConfig, text: String, hasSelection: Bool, in textView: UITextView) {
+            guard let storage = textStorage else { return }
+
+            // Show spinner + haptic on start
+            updateTransformButton(transforming: true)
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+
+            Task {
+                var result = ""
+                let stream = TransformService.shared.stream(config: config, input: TransformInput(text: text))
+
+                do {
+                    for try await event in stream {
+                        switch event {
+                        case .textDelta(let delta):
+                            result += delta
+                        case .done:
+                            break
+                        default:
+                            break
+                        }
+                    }
+                } catch {
+                    print("Transform failed: \(error)")
+                    await MainActor.run {
+                        updateTransformButton(transforming: false)
+                        UINotificationFeedbackGenerator().notificationOccurred(.error)
+                    }
+                    return
+                }
+
+                await MainActor.run {
+                    updateTransformButton(transforming: false)
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                }
+
+                guard !result.isEmpty else { return }
+
+                if hasSelection {
+                    showReplaceOrInsertPopup(result: result, selectionRange: textView.selectedRange, in: textView)
+                } else {
+                    // No selection — insert result below cursor
+                    let insertionPoint = textView.selectedRange.location
+                    let insertion = "\n\n" + result
+                    storage.replaceCharacters(in: NSRange(location: insertionPoint, length: 0), with: insertion)
+                    textView.selectedRange = NSRange(location: insertionPoint + insertion.count, length: 0)
+                    parent.text = textView.textStorage.string
+                    updatePlaceholder(textView)
+                }
+            }
+        }
+
+        private func showReplaceOrInsertPopup(result: String, selectionRange: NSRange, in textView: UITextView) {
+            guard let storage = textStorage,
+                  let viewController = textView.window?.rootViewController?.presentedViewController
+                    ?? textView.window?.rootViewController else { return }
+
+            let alert = UIAlertController(title: "AI Result", message: nil, preferredStyle: .alert)
+
+            alert.addAction(UIAlertAction(title: "Replace selected text", style: .default) { [weak self] _ in
+                storage.replaceCharacters(in: selectionRange, with: result)
+                textView.selectedRange = NSRange(location: selectionRange.location + result.count, length: 0)
+                self?.parent.text = textView.textStorage.string
+                self?.updatePlaceholder(textView)
+            })
+
+            alert.addAction(UIAlertAction(title: "Add below", style: .default) { [weak self] _ in
+                let insertPoint = NSMaxRange(selectionRange)
+                let insertion = "\n\n" + result
+                storage.replaceCharacters(in: NSRange(location: insertPoint, length: 0), with: insertion)
+                textView.selectedRange = NSRange(location: insertPoint + insertion.count, length: 0)
+                self?.parent.text = textView.textStorage.string
+                self?.updatePlaceholder(textView)
+            })
+
+            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+
+            viewController.present(alert, animated: true)
         }
     }
 }
