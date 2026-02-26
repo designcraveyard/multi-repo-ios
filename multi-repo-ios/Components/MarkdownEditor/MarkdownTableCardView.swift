@@ -160,8 +160,8 @@ class MarkdownTableCardView: UIView {
         var config = UIButton.Configuration.filled()
         config.image = UIImage(systemName: "trash",
             withConfiguration: UIImage.SymbolConfiguration(pointSize: 11, weight: .medium))
-        config.baseForegroundColor = .systemRed
-        config.baseBackgroundColor = UIColor.systemBackground.withAlphaComponent(0.85)
+        config.baseForegroundColor = UIColor(Color.iconsError)
+        config.baseBackgroundColor = UIColor(Color.surfacesBaseLowContrast).withAlphaComponent(0.9)
         config.cornerStyle = .capsule
         config.contentInsets = NSDirectionalEdgeInsets(top: 5, leading: 7, bottom: 5, trailing: 7)
         deleteButton.configuration = config
