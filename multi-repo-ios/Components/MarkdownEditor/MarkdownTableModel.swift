@@ -23,11 +23,16 @@ class MarkdownTableModel: ObservableObject {
     var rowCount: Int { cells.count }
     var columnCount: Int { cells.first?.count ?? 0 }
 
+    /// Whether the first row is styled as a header. Visual only — does not change
+    /// the exported markdown structure (GFM always requires a header + separator).
+    @Published var hasHeader: Bool = true
+
     // MARK: - Init
 
-    init(cells: [[String]], alignments: [ColumnAlignment]? = nil) {
+    init(cells: [[String]], alignments: [ColumnAlignment]? = nil, hasHeader: Bool = true) {
         self.cells = cells
         self.alignments = alignments ?? Array(repeating: .left, count: cells.first?.count ?? 0)
+        self.hasHeader = hasHeader
     }
 
     /// Create a default empty table (1 header row + 1 data row, 3 columns).
@@ -83,6 +88,12 @@ class MarkdownTableModel: ObservableObject {
         }
         let align = alignments.remove(at: source)
         alignments.insert(align, at: destination)
+    }
+
+    /// Returns a deep copy — used so the sheet editor can be cancelled without
+    /// affecting the original model.
+    func copy() -> MarkdownTableModel {
+        MarkdownTableModel(cells: cells.map { $0 }, alignments: alignments, hasHeader: hasHeader)
     }
 
     func setAlignment(_ alignment: ColumnAlignment, forColumn col: Int) {
