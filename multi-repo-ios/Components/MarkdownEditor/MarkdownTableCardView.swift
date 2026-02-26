@@ -21,7 +21,7 @@ class MarkdownTableCardView: UIView {
     private let rowStack = UIStackView()
     private let deleteButton = UIButton(type: .system)
     private let maxDisplayHeight: CGFloat = 200
-    private let rowHeight: CGFloat = 36
+    private let rowHeight: CGFloat = 44
     private let cellHPad: CGFloat = 8
 
     // Design tokens
