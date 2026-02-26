@@ -14,6 +14,13 @@ import SwiftUI
 import UIKit
 import PhotosUI
 
+// MARK: - TableCommitRelay
+
+/// Bridges the SwiftUI table-editor sheet's Done action back to the UIKit coordinator.
+final class TableCommitRelay {
+    var commit: ((MarkdownTableModel, NSRange?, Int) -> Void)?
+}
+
 // MARK: - AppMarkdownEditor
 
 public struct AppMarkdownEditor: View {
@@ -34,6 +41,9 @@ public struct AppMarkdownEditor: View {
     @State private var editorHeight: CGFloat = 200
     @State private var viewingImageEntry: ImageEntry?
     @State private var viewingImageStore: MarkdownImageStore?
+    @State private var imageRefreshToken: Int = 0
+    @State private var tableRelay = TableCommitRelay()
+    @State private var tableEditorSession: TableEditorSession?
 
     // MARK: - Init
 
@@ -87,12 +97,21 @@ public struct AppMarkdownEditor: View {
                 placeholder: placeholder,
                 isDisabled: isDisabled,
                 minHeight: minHeight,
+                imageRefreshToken: imageRefreshToken,
                 onHeightChange: { newHeight in
                     editorHeight = newHeight
                 },
                 onImageTap: { entry, store in
                     viewingImageStore = store
                     viewingImageEntry = entry
+                },
+                tableRelay: tableRelay,
+                onOpenTableEditor: { model, groupRange, cursorPos in
+                    tableEditorSession = TableEditorSession(
+                        model: model,
+                        groupRange: groupRange,
+                        cursorPosition: cursorPos
+                    )
                 }
             )
             .frame(minHeight: minHeight, maxHeight: maxHeight)
@@ -117,7 +136,17 @@ public struct AppMarkdownEditor: View {
             MarkdownImageViewer(
                 imageEntry: entry,
                 imageStore: viewingImageStore,
-                onCropComplete: { _ in }
+                onCropComplete: { _ in imageRefreshToken += 1 }
+            )
+        }
+        .fullScreenCover(item: $tableEditorSession) { session in
+            MarkdownTableEditorView(
+                session: session,
+                onCancel: { tableEditorSession = nil },
+                onDone: { editedModel in
+                    tableRelay.commit?(editedModel, session.groupRange, session.cursorPosition)
+                    tableEditorSession = nil
+                }
             )
         }
     }
@@ -131,12 +160,21 @@ public struct AppMarkdownEditor: View {
             placeholder: placeholder,
             isDisabled: isDisabled,
             minHeight: minHeight,
+            imageRefreshToken: imageRefreshToken,
             onHeightChange: { newHeight in
                 editorHeight = newHeight
             },
             onImageTap: { entry, store in
                 viewingImageStore = store
                 viewingImageEntry = entry
+            },
+            tableRelay: tableRelay,
+            onOpenTableEditor: { model, groupRange, cursorPos in
+                tableEditorSession = TableEditorSession(
+                    model: model,
+                    groupRange: groupRange,
+                    cursorPosition: cursorPos
+                )
             }
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -146,7 +184,17 @@ public struct AppMarkdownEditor: View {
             MarkdownImageViewer(
                 imageEntry: entry,
                 imageStore: viewingImageStore,
-                onCropComplete: { _ in }
+                onCropComplete: { _ in imageRefreshToken += 1 }
+            )
+        }
+        .fullScreenCover(item: $tableEditorSession) { session in
+            MarkdownTableEditorView(
+                session: session,
+                onCancel: { tableEditorSession = nil },
+                onDone: { editedModel in
+                    tableRelay.commit?(editedModel, session.groupRange, session.cursorPosition)
+                    tableEditorSession = nil
+                }
             )
         }
     }
@@ -209,8 +257,11 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
     let placeholder: String
     let isDisabled: Bool
     let minHeight: CGFloat
+    var imageRefreshToken: Int = 0
     let onHeightChange: (CGFloat) -> Void
     var onImageTap: ((ImageEntry, MarkdownImageStore) -> Void)?
+    var tableRelay: TableCommitRelay?
+    var onOpenTableEditor: ((MarkdownTableModel, NSRange?, Int) -> Void)?
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -283,6 +334,11 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
         context.coordinator.textStorage = textStorage
         context.coordinator.checkboxTapGesture = tapGesture
 
+        // Set up table commit relay
+        tableRelay?.commit = { [weak coordinator = context.coordinator] model, range, cursor in
+            coordinator?.commitTableEdit(model: model, groupRange: range, cursorPosition: cursor)
+        }
+
         // Set initial content
         if !text.isEmpty {
             textStorage.replaceCharacters(in: NSRange(location: 0, length: 0), with: text)
@@ -322,6 +378,12 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
         }
 
         coordinator.updatePlaceholder(textView)
+
+        // Invalidate image attachments after a crop so the text view redraws
+        if imageRefreshToken != coordinator.lastImageRefreshToken {
+            coordinator.lastImageRefreshToken = imageRefreshToken
+            coordinator.refreshImageAttachments(in: textView)
+        }
     }
 
     // MARK: - Coordinator
@@ -341,14 +403,16 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
         // Image store
         let imageStore = MarkdownImageStore()
 
-        // Table overlays
-        private var tableOverlays: [(groupRange: NSRange, view: MarkdownTableView, model: MarkdownTableModel)] = []
-        private var isUpdatingFromOverlay = false
+        // Table card overlays (read-only)
+        private var tableCardOverlays: [(groupRange: NSRange, card: MarkdownTableCardView)] = []
 
         // AI features
         private var audioRecorder: AppAudioRecorder?
         private var isRecording = false
         private var isTranscribing = false
+
+        // Image refresh tracking
+        var lastImageRefreshToken: Int = 0
 
         init(_ parent: MarkdownEditorRepresentable) {
             self.parent = parent
@@ -441,12 +505,10 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
         func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
             guard let storage = textStorage else { return true }
 
-            // Block direct edits inside table rows — editing happens via the overlay
-            if !isUpdatingFromOverlay {
-                let block = blockAtCursor(range.location, storage: storage)
-                if case .tableRow = block { return false }
-                if case .tableSeparator = block { return false }
-            }
+            // Block direct edits inside table rows — editing happens via the sheet editor
+            let block = blockAtCursor(range.location, storage: storage)
+            if case .tableRow = block { return false }
+            if case .tableSeparator = block { return false }
 
             if MarkdownInputProcessor.process(textView: textView, range: range, replacementText: text, textStorage: storage) {
                 DispatchQueue.main.async { [weak self] in
@@ -661,13 +723,10 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
                 showLinkPopover(textView: textView, storage: storage, range: range)
                 return // Don't sync text immediately — alert handles it
             case .table:
-                let table = "| Column 1 | Column 2 | Column 3 |\n| --- | --- | --- |\n|  |  |  |"
-                storage.replaceCharacters(in: range, with: table)
-                textView.selectedRange = NSRange(location: range.location + table.count, length: 0)
-                // Refresh table overlays after insertion
-                DispatchQueue.main.async { [weak self] in
-                    self?.updateTableOverlays()
-                }
+                let cursorPos = textView.selectedRange.location
+                let defaultModel = MarkdownTableModel.makeDefault()
+                parent.onOpenTableEditor?(defaultModel, nil, cursorPos)
+                return
             case .indent:
                 _ = MarkdownInputProcessor.process(textView: textView, range: range, replacementText: "\t", textStorage: storage)
             case .outdent:
@@ -961,24 +1020,21 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
 
         // MARK: - Table Overlay Management
 
-        /// Creates, updates, and removes MarkdownTableView overlays to match
-        /// the current table groups in the text storage. Each contiguous group
-        /// of table rows gets one overlay positioned over the invisible text.
         func updateTableOverlays() {
             guard let textView = textView,
-                  let storage = textStorage,
-                  !isUpdatingFromOverlay else { return }
+                  let storage = textStorage else { return }
 
             let layoutManager = textView.layoutManager
             let container = textView.textContainer
             let inset = textView.textContainerInset
             let groups = storage.tableGroups()
+            let storageLength = storage.length
 
-            // Remove overlays that no longer correspond to a group
-            var newOverlays: [(groupRange: NSRange, view: MarkdownTableView, model: MarkdownTableModel)] = []
+            var newOverlays: [(groupRange: NSRange, card: MarkdownTableCardView)] = []
 
             for group in groups {
-                // Find table row entries for this group (excluding separator)
+                guard NSMaxRange(group) <= storageLength else { continue }
+
                 let rowEntries = storage.lineBlocks.filter { entry in
                     if case .tableRow = entry.block,
                        NSIntersectionRange(group, entry.range).length > 0 { return true }
@@ -986,73 +1042,86 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
                 }
                 guard !rowEntries.isEmpty else { continue }
 
-                // Compute the rect covering all table rows (header + data, skipping separator)
-                let firstGlyphIndex = layoutManager.glyphIndexForCharacter(at: rowEntries.first!.range.location)
-                let lastGlyphIndex = layoutManager.glyphIndexForCharacter(at: rowEntries.last!.range.location)
-                let firstLineRect = layoutManager.lineFragmentRect(forGlyphAt: firstGlyphIndex, effectiveRange: nil)
-                let lastLineRect = layoutManager.lineFragmentRect(forGlyphAt: lastGlyphIndex, effectiveRange: nil)
+                let firstCharLoc = rowEntries.first!.range.location
+                let lastCharLoc  = rowEntries.last!.range.location
+                guard firstCharLoc < storageLength, lastCharLoc < storageLength else { continue }
 
-                let tableRect = CGRect(
+                let firstGlyph = layoutManager.glyphIndexForCharacter(at: firstCharLoc)
+                let lastGlyph  = layoutManager.glyphIndexForCharacter(at: lastCharLoc)
+                let firstRect  = layoutManager.lineFragmentRect(forGlyphAt: firstGlyph, effectiveRange: nil)
+                let lastRect   = layoutManager.lineFragmentRect(forGlyphAt: lastGlyph,  effectiveRange: nil)
+
+                let cardRect = CGRect(
                     x: inset.left,
-                    y: inset.top + firstLineRect.minY,
+                    y: inset.top + firstRect.minY,
                     width: container.size.width,
-                    height: lastLineRect.maxY - firstLineRect.minY
+                    height: lastRect.maxY - firstRect.minY
                 )
 
-                // Extract markdown text for this group
                 let groupText = (storage.string as NSString).substring(with: group)
 
-                // Try to reuse existing overlay for this group
-                if let existingIdx = tableOverlays.firstIndex(where: { NSIntersectionRange($0.groupRange, group).length > 0 }) {
-                    let existing = tableOverlays[existingIdx]
-                    existing.view.frame = tableRect
-                    newOverlays.append((groupRange: group, view: existing.view, model: existing.model))
-                    tableOverlays.remove(at: existingIdx)
+                if let existing = tableCardOverlays.first(where: {
+                    NSIntersectionRange($0.groupRange, group).length > 0
+                }) {
+                    existing.card.frame = cardRect
+                    existing.card.refresh()
+                    newOverlays.append((group, existing.card))
+                    tableCardOverlays.removeAll { $0.card === existing.card }
                 } else {
-                    // Create a new overlay
                     guard let model = MarkdownTableModel.fromMarkdown(groupText) else { continue }
-                    let tableView = MarkdownTableView(model: model)
-                    tableView.frame = tableRect
+                    let card = MarkdownTableCardView(model: model)
+                    card.frame = cardRect
 
-                    tableView.onModelChanged = { [weak self] in
+                    card.onTap = { [weak self] in
                         guard let self else { return }
-                        self.syncTableToStorage(model: model, groupRange: group)
+                        let copy = model.copy()
+                        self.parent.onOpenTableEditor?(copy, group, 0)
                     }
 
-                    textView.addSubview(tableView)
-                    newOverlays.append((groupRange: group, view: tableView, model: model))
+                    card.onDelete = { [weak self] in
+                        guard let self,
+                              let storage = self.textStorage,
+                              NSMaxRange(group) <= storage.length else { return }
+                        storage.replaceCharacters(in: group, with: "")
+                        self.parent.text = storage.string
+                        DispatchQueue.main.async { self.updateTableOverlays() }
+                    }
+
+                    textView.addSubview(card)
+                    newOverlays.append((group, card))
                 }
             }
 
-            // Remove stale overlays
-            for stale in tableOverlays {
-                stale.view.removeFromSuperview()
-            }
-            tableOverlays = newOverlays
+            // Remove stale cards
+            for stale in tableCardOverlays { stale.card.removeFromSuperview() }
+            tableCardOverlays = newOverlays
         }
 
-        /// Syncs the overlay model's data back into the text storage as markdown pipe syntax.
-        private func syncTableToStorage(model: MarkdownTableModel, groupRange: NSRange) {
-            guard let textView = textView,
-                  let storage = textStorage else { return }
+        // MARK: - Table Commit
 
-            isUpdatingFromOverlay = true
-            defer { isUpdatingFromOverlay = false }
+        func commitTableEdit(model: MarkdownTableModel, groupRange: NSRange?, cursorPosition: Int) {
+            guard let storage = textStorage else { return }
 
-            let newMarkdown = model.toMarkdown()
-            let safeRange = NSRange(
-                location: groupRange.location,
-                length: min(groupRange.length, storage.length - groupRange.location)
-            )
+            let newMarkdown = model.toMarkdown() + "\n"
 
-            storage.replaceCharacters(in: safeRange, with: newMarkdown)
-            parent.text = storage.string
-            updatePlaceholder(textView)
-
-            // Defer overlay refresh so layout manager has updated
-            DispatchQueue.main.async { [weak self] in
-                self?.updateTableOverlays()
+            if let groupRange = groupRange {
+                guard groupRange.location <= storage.length else { return }
+                let safeLength = min(groupRange.length, storage.length - groupRange.location)
+                guard safeLength >= 0 else { return }
+                storage.replaceCharacters(
+                    in: NSRange(location: groupRange.location, length: safeLength),
+                    with: newMarkdown)
+            } else {
+                let insertPoint = min(cursorPosition, storage.length)
+                let nsString = storage.string as NSString
+                let prefix = insertPoint > 0 && nsString.character(at: insertPoint - 1) != 0x0A ? "\n" : ""
+                storage.replaceCharacters(
+                    in: NSRange(location: insertPoint, length: 0),
+                    with: prefix + newMarkdown)
             }
+
+            parent.text = storage.string
+            DispatchQueue.main.async { [weak self] in self?.updateTableOverlays() }
         }
 
         // MARK: - Block Type Helper
@@ -1204,6 +1273,19 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
 
             parent.text = textView.textStorage.string
             updatePlaceholder(textView)
+        }
+
+        // MARK: - Image Attachment Refresh
+
+        /// Invalidates the layout for all inline image attachments so the text view redraws
+        /// them from the store (picking up any crop updates).
+        func refreshImageAttachments(in textView: UITextView) {
+            guard let storage = textStorage else { return }
+            storage.enumerateAttribute(.attachment, in: NSRange(location: 0, length: storage.length), options: []) { value, range, _ in
+                guard let attachment = value as? MarkdownImageAttachment else { return }
+                attachment.updateBounds()
+                textView.layoutManager.invalidateDisplay(forCharacterRange: range)
+            }
         }
 
         // MARK: - UIImagePickerControllerDelegate
