@@ -12,6 +12,7 @@ struct MarkdownTableActionBar: View {
 
     @ObservedObject var model: MarkdownTableModel
     var focusedColumn: Int?
+    var onDismissKeyboard: (() -> Void)?
 
     // MARK: - Body
 
@@ -57,6 +58,7 @@ struct MarkdownTableActionBar: View {
                 .frame(height: 20)
                 .padding(.horizontal, 4)
 
+            // Header row toggle
             Toggle(isOn: Binding(
                 get: { model.hasHeader },
                 set: { model.hasHeader = $0 }
@@ -67,6 +69,27 @@ struct MarkdownTableActionBar: View {
             .toggleStyle(.button)
             .tint(Color(uiColor: MarkdownColors.link))
             .frame(width: 32, height: 32)
+
+            // Header column toggle
+            Toggle(isOn: Binding(
+                get: { model.hasHeaderColumn },
+                set: { model.hasHeaderColumn = $0 }
+            )) {
+                Image(systemName: model.hasHeaderColumn ? "sidebar.left" : "sidebar.squares.left")
+                    .font(.system(size: 14, weight: .medium))
+            }
+            .toggleStyle(.button)
+            .tint(Color(uiColor: MarkdownColors.link))
+            .frame(width: 32, height: 32)
+
+            Divider()
+                .frame(height: 20)
+                .padding(.horizontal, 4)
+
+            // Keyboard dismiss
+            barButton(icon: "keyboard.chevron.compact.down", label: "Hide Keyboard") {
+                onDismissKeyboard?()
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)

@@ -26,13 +26,16 @@ class MarkdownTableModel: ObservableObject {
     /// Whether the first row is styled as a header. Visual only — does not change
     /// the exported markdown structure (GFM always requires a header + separator).
     @Published var hasHeader: Bool = true
+    /// Whether the first column is styled as a header column. Visual only.
+    @Published var hasHeaderColumn: Bool = false
 
     // MARK: - Init
 
-    init(cells: [[String]], alignments: [ColumnAlignment]? = nil, hasHeader: Bool = true) {
+    init(cells: [[String]], alignments: [ColumnAlignment]? = nil, hasHeader: Bool = true, hasHeaderColumn: Bool = false) {
         self.cells = cells
         self.alignments = alignments ?? Array(repeating: .left, count: cells.first?.count ?? 0)
         self.hasHeader = hasHeader
+        self.hasHeaderColumn = hasHeaderColumn
     }
 
     /// Create a default empty table (1 header row + 1 data row, 3 columns).
@@ -93,7 +96,7 @@ class MarkdownTableModel: ObservableObject {
     /// Returns a deep copy — used so the sheet editor can be cancelled without
     /// affecting the original model.
     func copy() -> MarkdownTableModel {
-        MarkdownTableModel(cells: cells.map { $0 }, alignments: alignments, hasHeader: hasHeader)
+        MarkdownTableModel(cells: cells.map { $0 }, alignments: alignments, hasHeader: hasHeader, hasHeaderColumn: hasHeaderColumn)
     }
 
     func setAlignment(_ alignment: ColumnAlignment, forColumn col: Int) {

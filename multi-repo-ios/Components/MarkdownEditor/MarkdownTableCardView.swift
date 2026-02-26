@@ -82,13 +82,13 @@ class MarkdownTableCardView: UIView {
         rowStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
         for (rowIdx, row) in model.cells.enumerated() {
             let isHeader = rowIdx == 0 && model.hasHeader
-            rowStack.addArrangedSubview(makeRowView(cells: row, isHeader: isHeader))
+            rowStack.addArrangedSubview(makeRowView(cells: row, isHeaderRow: isHeader, hasHeaderColumn: model.hasHeaderColumn))
         }
     }
 
-    private func makeRowView(cells: [String], isHeader: Bool) -> UIView {
+    private func makeRowView(cells: [String], isHeaderRow: Bool, hasHeaderColumn: Bool) -> UIView {
         let container = UIView()
-        container.backgroundColor = isHeader ? headerBG : .clear
+        container.backgroundColor = isHeaderRow ? headerBG : .clear
         container.translatesAutoresizingMaskIntoConstraints = false
         container.heightAnchor.constraint(equalToConstant: rowHeight).isActive = true
 
@@ -109,14 +109,16 @@ class MarkdownTableCardView: UIView {
         // Build equal-width columns
         var prevAnchor = container.leadingAnchor
         for (colIdx, text) in cells.enumerated() {
+            let isHeaderCell = isHeaderRow || (hasHeaderColumn && colIdx == 0)
             let label = UILabel()
             label.text = text
-            label.font = isHeader
+            label.font = isHeaderCell
                 ? UIFont.systemFont(ofSize: MarkdownFonts.body.pointSize, weight: .semibold)
                 : MarkdownFonts.body
             label.textColor = textColor
             label.lineBreakMode = .byTruncatingTail
             label.numberOfLines = 1
+            label.backgroundColor = (hasHeaderColumn && colIdx == 0 && !isHeaderRow) ? headerBG : .clear
             label.translatesAutoresizingMaskIntoConstraints = false
             container.addSubview(label)
 

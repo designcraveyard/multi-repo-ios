@@ -49,7 +49,12 @@ struct MarkdownTableEditorView: View {
                     Spacer()
                     MarkdownTableActionBar(
                         model: session.model,
-                        focusedColumn: focusedColumn
+                        focusedColumn: focusedColumn,
+                        onDismissKeyboard: {
+                            UIApplication.shared.sendAction(
+                                #selector(UIResponder.resignFirstResponder),
+                                to: nil, from: nil, for: nil)
+                        }
                     )
                     Spacer()
                 }
@@ -91,7 +96,10 @@ struct MarkdownTableEditorGrid: UIViewRepresentable {
         cv.dataSource = context.coordinator
         cv.delegate = context.coordinator
         cv.register(EditorCellView.self, forCellWithReuseIdentifier: EditorCellView.reuseID)
-        cv.keyboardDismissMode = .interactive
+        cv.keyboardDismissMode = .none
+        cv.alwaysBounceHorizontal = true
+        cv.showsHorizontalScrollIndicator = true
+        cv.showsVerticalScrollIndicator = true
         context.coordinator.collectionView = cv
         // Force initial data load after the view is in the hierarchy
         DispatchQueue.main.async { cv.reloadData() }
@@ -154,20 +162,21 @@ struct MarkdownTableEditorGrid: UIViewRepresentable {
         func createLayout(for model: MarkdownTableModel) -> UICollectionViewLayout {
             let colCount = max(1, model.columnCount)
             return UICollectionViewCompositionalLayout { _, environment in
-
                 let availableWidth = environment.container.effectiveContentSize.width
-                let minColWidth: CGFloat = 110
-                let useFixed = CGFloat(colCount) * minColWidth > availableWidth
+                let minColWidth: CGFloat = 120
+                let naturalWidth = availableWidth / CGFloat(colCount)
+                let colWidth = max(naturalWidth, minColWidth)
+                let useFixed = colWidth > naturalWidth
 
                 let itemWidth: NSCollectionLayoutDimension = useFixed
-                    ? .absolute(minColWidth)
+                    ? .absolute(colWidth)
                     : .fractionalWidth(1.0 / CGFloat(colCount))
 
                 let item = NSCollectionLayoutItem(
                     layoutSize: .init(widthDimension: itemWidth,
                                       heightDimension: .absolute(44)))
                 let groupWidth: NSCollectionLayoutDimension = useFixed
-                    ? .absolute(minColWidth * CGFloat(colCount))
+                    ? .absolute(colWidth * CGFloat(colCount))
                     : .fractionalWidth(1.0)
                 let group = NSCollectionLayoutGroup.horizontal(
                     layoutSize: .init(widthDimension: groupWidth,
@@ -192,7 +201,9 @@ struct MarkdownTableEditorGrid: UIViewRepresentable {
                 for: indexPath) as! EditorCellView
             let row = indexPath.item / model.columnCount
             let col = indexPath.item % model.columnCount
-            let isHeader = row == 0 && model.hasHeader
+            let isHeaderRow = row == 0 && model.hasHeader
+            let isHeaderCol = col == 0 && model.hasHeaderColumn
+            let isHeader = isHeaderRow || isHeaderCol
             let isFocused = indexPath == focusedIndexPath
 
             cell.configure(
@@ -211,7 +222,9 @@ struct MarkdownTableEditorGrid: UIViewRepresentable {
                       col < self.model.cells[row].count else { return }
                 self.suppressReload = true
                 self.model.cells[row][col] = newText
-                self.suppressReload = false
+                // Delay clearing flag so the Combine sink (receive on RunLoop.main)
+                // still sees suppressReload = true and skips the reloadData().
+                DispatchQueue.main.async { self.suppressReload = false }
             }
 
             cell.onReturn = { [weak self] in
@@ -307,14 +320,14 @@ private class EditorCellView: UICollectionViewCell, UITextFieldDelegate {
             contentView.addSubview(line)
             if isBottom {
                 NSLayoutConstraint.activate([
-                    line.heightAnchor.constraint(equalToConstant: 0.5),
+                    line.heightAnchor.constraint(equalToConstant: 1),
                     line.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
                     line.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
                     line.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
                 ])
             } else {
                 NSLayoutConstraint.activate([
-                    line.widthAnchor.constraint(equalToConstant: 0.5),
+                    line.widthAnchor.constraint(equalToConstant: 1),
                     line.topAnchor.constraint(equalTo: contentView.topAnchor),
                     line.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
                     line.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
