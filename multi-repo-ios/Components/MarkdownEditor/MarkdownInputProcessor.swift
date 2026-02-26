@@ -31,14 +31,8 @@ struct MarkdownInputProcessor {
             return handleTab(textView: textView, range: range, textStorage: textStorage, reverse: false)
         }
 
-        // Enter key handling — table row insertion takes priority
+        // Enter key handling
         if text == "\n" {
-            if case .tableRow = currentBlock {
-                return handleTableEnter(textView: textView, range: range, textStorage: textStorage)
-            }
-            if case .tableSeparator = currentBlock {
-                return handleTableEnter(textView: textView, range: range, textStorage: textStorage)
-            }
             return handleEnter(textView: textView, range: range, textStorage: textStorage)
         }
 
@@ -285,50 +279,6 @@ struct MarkdownInputProcessor {
         return false
     }
 
-    // MARK: - Table Row Insertion (Enter)
-
-    /// Enter inside a table row: insert a new row with the same number of columns.
-    private static func handleTableEnter(
-        textView: UITextView,
-        range: NSRange,
-        textStorage: MarkdownTextStorage
-    ) -> Bool {
-        let nsString = textStorage.string as NSString
-        let lineRange = nsString.lineRange(for: NSRange(location: range.location, length: 0))
-        let line = nsString.substring(with: lineRange).trimmingCharacters(in: .newlines)
-
-        // Count columns from the current line (or find a nearby table row)
-        var columnCount = countPipes(in: line) - 1  // pipes - 1 = columns
-        if columnCount < 1 {
-            // Try to find column count from adjacent table rows
-            for (lr, block) in textStorage.lineBlocks {
-                if case .tableRow = block {
-                    let rowLine = nsString.substring(with: lr)
-                    columnCount = max(countPipes(in: rowLine) - 1, 1)
-                    break
-                }
-            }
-        }
-        columnCount = max(columnCount, 1)
-
-        // Build new row: "| | | |" with correct column count
-        let cellContent = " "
-        var newRow = "|"
-        for _ in 0..<columnCount {
-            newRow += " \(cellContent)|"
-        }
-
-        // Insert at the end of the current line
-        let insertionPoint = NSMaxRange(lineRange)
-        let insertion = "\n" + newRow
-        textStorage.replaceCharacters(in: NSRange(location: insertionPoint, length: 0), with: insertion)
-
-        // Place cursor in the first cell of the new row (after "| ")
-        let cursorPos = insertionPoint + 3 // "\n" + "| " = 3 chars
-        textView.selectedRange = NSRange(location: cursorPos, length: 0)
-        return true
-    }
-
     // MARK: - Table Helpers
 
     /// Returns the block type at the given character position.
@@ -344,10 +294,6 @@ struct MarkdownInputProcessor {
     private static let pipeChar: unichar = 0x7C   // "|"
     private static let spaceChar: unichar = 0x20   // " "
     private static let newlineChar: unichar = 0x0A // "\n"
-
-    private static func countPipes(in line: String) -> Int {
-        line.filter { $0 == "|" }.count
-    }
 
     private static func isSeparatorRow(_ line: String) -> Bool {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
