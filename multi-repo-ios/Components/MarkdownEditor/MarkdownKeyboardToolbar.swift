@@ -32,6 +32,8 @@ enum MarkdownToolbarAction {
     case indent
     case outdent
     case codePicker
+    case imagePicker
+    case share
     case aiTranscribe
     case aiTransform
 }
@@ -82,6 +84,7 @@ class MarkdownKeyboardToolbar: UIView {
         ButtonSpec(icon: "minus", label: "Divider", action: .horizontalRule, dividerAfter: true),
 
         // Group 5: Rich elements
+        ButtonSpec(icon: "photo.on.rectangle.angled", label: "Image", action: .imagePicker, dividerAfter: false),
         ButtonSpec(icon: "tablecells", label: "Table", action: .table, dividerAfter: false),
         ButtonSpec(icon: "link", label: "Link", action: .link, dividerAfter: true),
 

@@ -61,8 +61,8 @@ public struct AppTooltip<Label: View, TipContent: View>: View {
                     .padding(.horizontal, NativeTooltipStyling.Layout.paddingH)
                     .padding(.vertical, NativeTooltipStyling.Layout.paddingV)
                     .frame(maxWidth: NativeTooltipStyling.Layout.maxWidth)
-                    .background(NativeTooltipStyling.Colors.background,
-                                in: RoundedRectangle(cornerRadius: NativeTooltipStyling.Layout.cornerRadius))
+                    // Dark inverse background on the popover chrome (arrow + bubble)
+                    .presentationBackground(NativeTooltipStyling.Colors.background)
                     // Keeps this as a popover bubble on iPhone, not a full sheet
                     .presentationCompactAdaptation(.popover)
             }
@@ -88,24 +88,47 @@ extension AppTooltip where TipContent == Text {
 // MARK: - Preview
 
 #Preview {
-    @Previewable @State var show1 = false
-    @Previewable @State var show2 = false
+    @Previewable @State var showTop = false
+    @Previewable @State var showBottom = false
+    @Previewable @State var showLeading = false
+    @Previewable @State var showTrailing = false
 
-    VStack(spacing: 40) {
-        AppTooltip(isPresented: $show1, tipText: "Tap the heart to like this post") {
+    VStack(spacing: 48) {
+        Text("Tap each button to toggle tooltip")
+            .font(.appCaptionMedium)
+            .foregroundStyle(Color.typographyMuted)
+
+        // Arrow at top → bubble appears below
+        AppTooltip(isPresented: $showTop, tipText: "View details", arrowEdge: .top) {
+            Button("Top (below)") { showTop.toggle() }
+                .font(.appCTAMedium)
+        }
+
+        // Arrow at bottom → bubble appears above
+        AppTooltip(isPresented: $showBottom, tipText: "View details", arrowEdge: .bottom) {
+            Button("Bottom (above)") { showBottom.toggle() }
+                .font(.appCTAMedium)
+        }
+
+        HStack(spacing: 64) {
+            // Arrow at trailing → bubble appears to the left
+            AppTooltip(isPresented: $showTrailing, tipText: "View details", arrowEdge: .trailing) {
+                Button("Trailing (left)") { showTrailing.toggle() }
+                    .font(.appCTAMedium)
+            }
+
+            // Arrow at leading → bubble appears to the right
+            AppTooltip(isPresented: $showLeading, tipText: "View details", arrowEdge: .leading) {
+                Button("Leading (right)") { showLeading.toggle() }
+                    .font(.appCTAMedium)
+            }
+        }
+
+        // Rich content example
+        AppTooltip(isPresented: .constant(true), tipText: "Always visible tooltip", arrowEdge: .top) {
             Image(systemName: "heart")
                 .font(.title)
                 .foregroundStyle(Color.appIconPrimary)
-                .onTapGesture { show1.toggle() }
-        }
-
-        AppTooltip(isPresented: $show2, arrowEdge: .bottom) {
-            Button("Hover me") { show2.toggle() }
-        } tipContent: {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Pro Tip").bold()
-                Text("Hold to see more options.")
-            }
         }
     }
     .padding()

@@ -82,8 +82,8 @@ public struct AppTabs: View {
                     tabButton(item: item, spec: spec)
                 }
             }
-            .overlay(alignment: .bottom) {
-                // Bottom border (full width, always visible)
+            .background(alignment: .bottom) {
+                // Bottom border behind the active indicator
                 Rectangle()
                     .fill(Color.borderDefault)
                     .frame(height: 1)

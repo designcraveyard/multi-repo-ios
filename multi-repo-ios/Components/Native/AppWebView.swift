@@ -31,6 +31,9 @@ struct AppWebView: UIViewRepresentable {
     /// Binding that reflects whether the web view is currently loading content.
     @Binding var isLoading: Bool
 
+    /// When true, enables pull-to-refresh on the web view's scroll view.
+    var allowsRefresh: Bool
+
     /// Optional callback invoked when a navigation error occurs.
     var onError: ((Error) -> Void)?
 
@@ -39,10 +42,12 @@ struct AppWebView: UIViewRepresentable {
     init(
         url: URL,
         isLoading: Binding<Bool> = .constant(false),
+        allowsRefresh: Bool = false,
         onError: ((Error) -> Void)? = nil
     ) {
         self.url = url
         self._isLoading = isLoading
+        self.allowsRefresh = allowsRefresh
         self.onError = onError
     }
 
@@ -57,6 +62,12 @@ struct AppWebView: UIViewRepresentable {
         webView.isOpaque = false
         webView.backgroundColor = .clear
         webView.scrollView.backgroundColor = .clear
+
+        if allowsRefresh {
+            let refreshControl = UIRefreshControl()
+            refreshControl.addTarget(context.coordinator, action: #selector(Coordinator.handleRefresh(_:)), for: .valueChanged)
+            webView.scrollView.refreshControl = refreshControl
+        }
 
         webView.load(URLRequest(url: url))
         return webView
@@ -76,10 +87,18 @@ struct AppWebView: UIViewRepresentable {
     // MARK: - Coordinator
 
     class Coordinator: NSObject, WKNavigationDelegate {
-        let parent: AppWebView
+        var parent: AppWebView
 
         init(parent: AppWebView) {
             self.parent = parent
+        }
+
+        @objc func handleRefresh(_ sender: UIRefreshControl) {
+            guard let webView = sender.superview?.superview as? WKWebView else {
+                sender.endRefreshing()
+                return
+            }
+            webView.reload()
         }
 
         func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
@@ -88,15 +107,18 @@ struct AppWebView: UIViewRepresentable {
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             parent.isLoading = false
+            webView.scrollView.refreshControl?.endRefreshing()
         }
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
             parent.isLoading = false
+            webView.scrollView.refreshControl?.endRefreshing()
             parent.onError?(error)
         }
 
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
             parent.isLoading = false
+            webView.scrollView.refreshControl?.endRefreshing()
             parent.onError?(error)
         }
     }

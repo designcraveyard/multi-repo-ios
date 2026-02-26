@@ -36,9 +36,11 @@ public struct AppColorPicker: View {
             .font(NativeColorPickerStyling.Typography.label)
             .foregroundStyle(NativeColorPickerStyling.Colors.label)
             .tint(NativeColorPickerStyling.Colors.tint)
+            .simultaneousGesture(TapGesture().onEnded {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            })
             .onChange(of: selection) { _, _ in
-                let generator = UIImpactFeedbackGenerator(style: .light)
-                generator.impactOccurred()
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
             }
     }
 }

@@ -12,6 +12,7 @@
 
 import SwiftUI
 import UIKit
+import PhotosUI
 
 // MARK: - AppMarkdownEditor
 
@@ -31,6 +32,8 @@ public struct AppMarkdownEditor: View {
 
     @State private var isFocused = false
     @State private var editorHeight: CGFloat = 200
+    @State private var viewingImageEntry: ImageEntry?
+    @State private var viewingImageStore: MarkdownImageStore?
 
     // MARK: - Init
 
@@ -86,6 +89,10 @@ public struct AppMarkdownEditor: View {
                 minHeight: minHeight,
                 onHeightChange: { newHeight in
                     editorHeight = newHeight
+                },
+                onImageTap: { entry, store in
+                    viewingImageStore = store
+                    viewingImageEntry = entry
                 }
             )
             .frame(minHeight: minHeight, maxHeight: maxHeight)
@@ -106,6 +113,13 @@ public struct AppMarkdownEditor: View {
         }
         .opacity(isDisabled ? 0.5 : 1.0)
         .allowsHitTesting(!isDisabled)
+        .fullScreenCover(item: $viewingImageEntry) { entry in
+            MarkdownImageViewer(
+                imageEntry: entry,
+                imageStore: viewingImageStore,
+                onCropComplete: { _ in }
+            )
+        }
     }
 
     // MARK: - Bare Editor (no chrome — for full-page Notes-like usage)
@@ -119,11 +133,22 @@ public struct AppMarkdownEditor: View {
             minHeight: minHeight,
             onHeightChange: { newHeight in
                 editorHeight = newHeight
+            },
+            onImageTap: { entry, store in
+                viewingImageStore = store
+                viewingImageEntry = entry
             }
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .opacity(isDisabled ? 0.5 : 1.0)
         .allowsHitTesting(!isDisabled)
+        .fullScreenCover(item: $viewingImageEntry) { entry in
+            MarkdownImageViewer(
+                imageEntry: entry,
+                imageStore: viewingImageStore,
+                onCropComplete: { _ in }
+            )
+        }
     }
 
     // MARK: - Helpers
@@ -185,6 +210,7 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
     let isDisabled: Bool
     let minHeight: CGFloat
     let onHeightChange: (CGFloat) -> Void
+    var onImageTap: ((ImageEntry, MarkdownImageStore) -> Void)?
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -292,7 +318,7 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
 
     // MARK: - Coordinator
 
-    class Coordinator: NSObject, UITextViewDelegate, UIGestureRecognizerDelegate {
+    class Coordinator: NSObject, UITextViewDelegate, UIGestureRecognizerDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, PHPickerViewControllerDelegate, UIDocumentPickerDelegate {
         let parent: MarkdownEditorRepresentable
         weak var textView: UITextView?
         weak var textStorage: MarkdownTextStorage?
@@ -303,6 +329,9 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
         // iPad floating toolbar
         private var floatingToolbar: MarkdownKeyboardToolbar?
         private var floatingToolbarBottomConstraint: NSLayoutConstraint?
+
+        // Image store
+        let imageStore = MarkdownImageStore()
 
         // AI features
         private var audioRecorder: AppAudioRecorder?
@@ -511,6 +540,26 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
                 fractionOfDistanceBetweenInsertionPoints: &fraction
             )
 
+            // Check for image attachment tap — open fullscreen viewer.
+            // Scan the entire line at the tapped position for an attachment,
+            // since characterIndex may not land exactly on the \uFFFC character.
+            if charIndex < storage.length {
+                let nsString = storage.string as NSString
+                let lineRange = nsString.lineRange(for: NSRange(location: min(charIndex, nsString.length - 1), length: 0))
+                var tappedEntry: ImageEntry?
+                storage.enumerateAttribute(.attachment, in: lineRange, options: []) { value, _, stop in
+                    if let attachment = value as? MarkdownImageAttachment,
+                       let entry = self.imageStore.image(for: attachment.imageID) {
+                        tappedEntry = entry
+                        stop.pointee = true
+                    }
+                }
+                if let entry = tappedEntry {
+                    parent.onImageTap?(entry, imageStore)
+                    return
+                }
+            }
+
             for (lineRange, block) in storage.lineBlocks {
                 guard case .taskList(_, let checked) = block else { continue }
                 let line = (storage.string as NSString).substring(with: lineRange)
@@ -619,6 +668,23 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
                         storage.replaceCharacters(in: NSRange(location: lineRange.location, length: 2), with: "")
                     }
                 }
+            case .imagePicker:
+                showImageSourcePicker(in: textView)
+                return
+            case .share:
+                guard let fileURL = MarkdownExporter.exportToFile(storage: storage) else { return }
+                let activityVC = UIActivityViewController(activityItems: [fileURL], applicationActivities: nil)
+                if let popover = activityVC.popoverPresentationController {
+                    popover.sourceView = textView
+                    popover.sourceRect = CGRect(x: textView.bounds.midX, y: textView.bounds.midY, width: 0, height: 0)
+                }
+                if let scene = textView.window?.windowScene,
+                   let rootVC = scene.keyWindow?.rootViewController {
+                    var topVC = rootVC
+                    while let presented = topVC.presentedViewController { topVC = presented }
+                    topVC.present(activityVC, animated: true)
+                }
+                return
             case .aiTranscribe:
                 handleTranscribe(in: textView)
                 return // Don't sync text immediately — async handlers manage it
@@ -880,6 +946,187 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
                 }
             }
             return .paragraph
+        }
+
+        // MARK: - Image Picker
+
+        private func showImageSourcePicker(in textView: UITextView) {
+            guard let viewController = textView.window?.rootViewController?.presentedViewController
+                    ?? textView.window?.rootViewController else { return }
+
+            let alert = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
+
+            if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                alert.addAction(UIAlertAction(title: "Camera", style: .default) { [weak self] _ in
+                    self?.openCamera(from: viewController, textView: textView)
+                })
+            }
+
+            alert.addAction(UIAlertAction(title: "Photo Library", style: .default) { [weak self] _ in
+                self?.openPhotoLibrary(from: viewController)
+            })
+
+            alert.addAction(UIAlertAction(title: "Files", style: .default) { [weak self] _ in
+                self?.openFilePicker(from: viewController)
+            })
+
+            alert.addAction(UIAlertAction(title: "URL", style: .default) { [weak self] _ in
+                self?.showURLImagePrompt(from: viewController, textView: textView)
+            })
+
+            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+
+            if let popover = alert.popoverPresentationController {
+                popover.sourceView = textView
+                let caretRect = textView.caretRect(for: textView.selectedTextRange?.start ?? textView.beginningOfDocument)
+                popover.sourceRect = caretRect
+            }
+
+            viewController.present(alert, animated: true)
+        }
+
+        private func openCamera(from viewController: UIViewController, textView: UITextView) {
+            let picker = UIImagePickerController()
+            picker.sourceType = .camera
+            picker.delegate = self
+            viewController.present(picker, animated: true)
+        }
+
+        private func openPhotoLibrary(from viewController: UIViewController) {
+            var config = PHPickerConfiguration(photoLibrary: .shared())
+            config.selectionLimit = 1
+            config.filter = .images
+            let picker = PHPickerViewController(configuration: config)
+            picker.delegate = self
+            viewController.present(picker, animated: true)
+        }
+
+        private func openFilePicker(from viewController: UIViewController) {
+            let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.image])
+            picker.delegate = self
+            viewController.present(picker, animated: true)
+        }
+
+        private func showURLImagePrompt(from viewController: UIViewController, textView: UITextView) {
+            let alert = UIAlertController(title: "Image URL", message: nil, preferredStyle: .alert)
+            alert.addTextField { tf in
+                tf.placeholder = "https://example.com/image.png"
+                tf.keyboardType = .URL
+                tf.autocapitalizationType = .none
+                tf.autocorrectionType = .no
+            }
+
+            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+            alert.addAction(UIAlertAction(title: "Download", style: .default) { [weak self] _ in
+                guard let urlString = alert.textFields?.first?.text,
+                      let url = URL(string: urlString) else { return }
+
+                Task {
+                    do {
+                        let (data, _) = try await URLSession.shared.data(from: url)
+                        guard let image = UIImage(data: data) else { return }
+                        await MainActor.run {
+                            self?.insertImage(image, in: textView)
+                        }
+                    } catch {
+                        print("Failed to download image: \(error)")
+                    }
+                }
+            })
+
+            viewController.present(alert, animated: true)
+        }
+
+        private func insertImage(_ image: UIImage, in textView: UITextView) {
+            guard let storage = textStorage else { return }
+
+            // Calculate max width from text container, with fallback
+            let containerWidth = textView.textContainer.size.width
+            let maxWidth: CGFloat
+            if containerWidth > 0 && containerWidth < 10000 {
+                maxWidth = containerWidth - 10
+            } else {
+                maxWidth = textView.bounds.width - textView.textContainerInset.left - textView.textContainerInset.right - 10
+            }
+
+            let id = imageStore.addImage(image)
+            let attachment = MarkdownImageAttachment(imageID: id, imageStore: imageStore, maxWidth: maxWidth)
+            let attrString = NSMutableAttributedString(attachment: attachment)
+            // Use a paragraph style without line height cap so the image
+            // determines the line fragment height (not the default 24pt cap).
+            let imgPara = NSMutableParagraphStyle()
+            imgPara.paragraphSpacing = 4
+            imgPara.minimumLineHeight = 0
+            imgPara.maximumLineHeight = 0
+            attrString.addAttributes([
+                .font: MarkdownFonts.body,
+                .paragraphStyle: imgPara
+            ], range: NSRange(location: 0, length: attrString.length))
+
+            // Always insert on its own line with newlines around it
+            let insertionPoint = textView.selectedRange.location
+            let nsString = storage.string as NSString
+            var prefix = ""
+            var suffix = "\n"
+
+            // Add leading newline if not at start of line
+            if insertionPoint > 0 && nsString.character(at: insertionPoint - 1) != 0x0A {
+                prefix = "\n"
+            }
+
+            // Insert: [prefix]\n{attachment}\n
+            if !prefix.isEmpty {
+                storage.replaceCharacters(in: NSRange(location: insertionPoint, length: 0), with: prefix)
+            }
+            let attachPoint = insertionPoint + prefix.count
+            storage.insert(attrString, at: attachPoint)
+            storage.replaceCharacters(in: NSRange(location: attachPoint + 1, length: 0), with: suffix)
+            textView.selectedRange = NSRange(location: attachPoint + 1 + suffix.count, length: 0)
+
+            parent.text = textView.textStorage.string
+            updatePlaceholder(textView)
+        }
+
+        // MARK: - UIImagePickerControllerDelegate
+
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            picker.dismiss(animated: true)
+            guard let image = info[.originalImage] as? UIImage,
+                  let textView = textView else { return }
+            insertImage(image, in: textView)
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            picker.dismiss(animated: true)
+        }
+
+        // MARK: - PHPickerViewControllerDelegate
+
+        func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+            picker.dismiss(animated: true)
+            guard let provider = results.first?.itemProvider,
+                  provider.canLoadObject(ofClass: UIImage.self) else { return }
+
+            provider.loadObject(ofClass: UIImage.self) { [weak self] object, _ in
+                guard let image = object as? UIImage else { return }
+                DispatchQueue.main.async {
+                    guard let self, let textView = self.textView else { return }
+                    self.insertImage(image, in: textView)
+                }
+            }
+        }
+
+        // MARK: - UIDocumentPickerDelegate
+
+        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+            guard let url = urls.first,
+                  url.startAccessingSecurityScopedResource() else { return }
+            defer { url.stopAccessingSecurityScopedResource() }
+
+            guard let data = try? Data(contentsOf: url),
+                  let image = UIImage(data: data),
+                  let textView = textView else { return }
+            insertImage(image, in: textView)
         }
 
         // MARK: - AI Transcribe

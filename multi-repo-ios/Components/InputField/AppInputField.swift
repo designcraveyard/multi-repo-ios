@@ -353,6 +353,10 @@ public struct AppTextField: View {
                 )
                 .opacity(isDisabled ? 0.5 : 1.0)
                 .animation(.easeOut(duration: 0.15), value: isFocused)
+                .onChange(of: isFocused) { _, focused in
+                    guard focused else { return }
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                }
 
             if let hint {
                 Text(hint)
@@ -360,6 +364,42 @@ public struct AppTextField: View {
                     .foregroundStyle(spec.hintColor)
             }
         }
+    }
+}
+
+// MARK: - AppTextOnlyField (bare text input — no chrome)
+
+/// A minimal text field with no background, border, or container.
+/// Used as a building block inside complex components (chat input, inline editors).
+public struct AppTextOnlyField: View {
+
+    @Binding var text: String
+    let placeholder: String
+    let font: Font
+    let isDisabled: Bool
+
+    @FocusState private var isFocused: Bool
+
+    public init(
+        text: Binding<String>,
+        placeholder: String = "",
+        font: Font = .system(size: 14, weight: .regular),
+        isDisabled: Bool = false
+    ) {
+        self._text = text
+        self.placeholder = placeholder
+        self.font = font
+        self.isDisabled = isDisabled
+    }
+
+    public var body: some View {
+        TextField(placeholder, text: $text)
+            .font(font)
+            .foregroundStyle(Color.typographyPrimary)
+            .tint(Color.surfacesBrandInteractive)
+            .focused($isFocused)
+            .disabled(isDisabled)
+            .opacity(isDisabled ? 0.5 : 1.0)
     }
 }
 

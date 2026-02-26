@@ -100,6 +100,16 @@ class MarkdownTextStorage: NSTextStorage {
         let fullRange = NSRange(location: 0, length: length)
         guard fullRange.length > 0 else { return }
 
+        // Preserve image attachments before resetting attributes.
+        // processEditing wipes all attributes; without this, NSTextAttachment
+        // for embedded images would be destroyed on every keystroke.
+        var savedAttachments: [(NSRange, NSTextAttachment)] = []
+        backing.enumerateAttribute(.attachment, in: fullRange, options: []) { value, range, _ in
+            if let attachment = value as? NSTextAttachment {
+                savedAttachments.append((range, attachment))
+            }
+        }
+
         // Reset to default body style with 24pt line height
         let defaultAttrs: [NSAttributedString.Key: Any] = [
             .font: MarkdownFonts.body,
@@ -108,6 +118,26 @@ class MarkdownTextStorage: NSTextStorage {
             .baselineOffset: MarkdownLayout.bodyBaselineOffset,
         ]
         backing.setAttributes(defaultAttrs, range: fullRange)
+
+        // Restore image attachments and fix paragraph style for attachment lines.
+        // The default paragraph style caps line height at 24pt, which clips tall
+        // image attachments. We need to remove that cap so the text system
+        // allocates the full attachment height for the line fragment.
+        for (range, attachment) in savedAttachments {
+            if range.location + range.length <= backing.length {
+                backing.addAttribute(.attachment, value: attachment, range: range)
+
+                // Find the full line range containing this attachment
+                let lineRange = (backing.string as NSString).lineRange(for: range)
+
+                // Apply a paragraph style that allows the image to determine line height
+                let imgPara = NSMutableParagraphStyle()
+                imgPara.paragraphSpacing = MarkdownLayout.paragraphSpacing
+                imgPara.minimumLineHeight = 0
+                imgPara.maximumLineHeight = 0 // 0 = no cap, let attachment size dictate
+                backing.addAttribute(.paragraphStyle, value: imgPara, range: lineRange)
+            }
+        }
 
         // Classify lines
         lineBlocks = classifyLines()
@@ -153,8 +183,9 @@ class MarkdownTextStorage: NSTextStorage {
                     tablePara.paragraphSpacing = 0
                     para = tablePara
                 case .tableSeparator:
-                    font = MarkdownFonts.body
-                    color = MarkdownColors.tableBorder
+                    // Separator is collapsed — use small font to match
+                    font = UIFont.systemFont(ofSize: 0.01)
+                    color = UIColor.clear
                 default:
                     break
                 }
@@ -309,6 +340,30 @@ class MarkdownTextStorage: NSTextStorage {
     private static func isHorizontalRule(_ stripped: String) -> Bool {
         let clean = stripped.replacingOccurrences(of: " ", with: "")
         return (clean == "---" || clean == "***" || clean == "___") && stripped.count >= 3
+    }
+
+    /// Returns the combined range for each contiguous group of table lines.
+    func tableGroups() -> [NSRange] {
+        var groups: [NSRange] = []
+        var currentStart: Int?
+        var currentEnd: Int = 0
+
+        for (range, block) in lineBlocks {
+            switch block {
+            case .tableRow, .tableSeparator:
+                if currentStart == nil { currentStart = range.location }
+                currentEnd = NSMaxRange(range)
+            default:
+                if let start = currentStart {
+                    groups.append(NSRange(location: start, length: currentEnd - start))
+                    currentStart = nil
+                }
+            }
+        }
+        if let start = currentStart {
+            groups.append(NSRange(location: start, length: currentEnd - start))
+        }
+        return groups
     }
 
     /// Parse a markdown table row into cell strings.
@@ -479,16 +534,16 @@ class MarkdownTextStorage: NSTextStorage {
                 .baselineOffset: MarkdownLayout.bodyBaselineOffset,
             ], range: range)
 
-            // Now color ONLY the pipe characters using NSString character-at-index
-            // (not Swift String enumeration) to avoid Unicode offset mismatches.
-            // We set foregroundColor only — font stays uniform from above.
+            // Hide pipe characters — MarkdownLayoutManager draws column dividers
+            // at their actual glyph positions. We keep the font so the glyph
+            // occupies space (needed for column position calculation).
             let nsLine = backing.string as NSString
             for offset in 0..<range.length {
                 let charIndex = range.location + offset
                 if nsLine.character(at: charIndex) == 0x7C /* "|" */ {
                     backing.addAttribute(
                         .foregroundColor,
-                        value: MarkdownColors.tableBorder,
+                        value: UIColor.clear,
                         range: NSRange(location: charIndex, length: 1)
                     )
                 }
@@ -499,18 +554,18 @@ class MarkdownTextStorage: NSTextStorage {
             backing.addAttribute(.tableIsHeader, value: isHeader, range: range)
 
         case .tableSeparator:
-            // Style separator row as muted border-colored text (visible but de-emphasized).
-            // Hiding it entirely breaks editing: processEditing() re-parses on each keystroke
-            // and a fully-hidden separator can cause table row misclassification.
+            // Collapse separator row to near-zero height. The separator line is drawn
+            // by MarkdownLayoutManager as a thicker border between header and data rows.
+            // We keep the text in the backing string (needed for markdown round-trip)
+            // but make it visually invisible and collapsed.
             let para = NSMutableParagraphStyle()
-            para.minimumLineHeight = MarkdownLayout.bodyLineHeight
-            para.maximumLineHeight = MarkdownLayout.bodyLineHeight
+            para.minimumLineHeight = 1
+            para.maximumLineHeight = 1
             para.paragraphSpacing = 0
             backing.addAttributes([
-                .font: MarkdownFonts.body,
-                .foregroundColor: MarkdownColors.tableBorder,
+                .font: UIFont.systemFont(ofSize: 0.01),
+                .foregroundColor: UIColor.clear,
                 .paragraphStyle: para,
-                .baselineOffset: MarkdownLayout.bodyBaselineOffset,
             ], range: range)
 
         case .paragraph:

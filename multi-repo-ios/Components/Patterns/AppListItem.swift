@@ -16,6 +16,7 @@
 
 import PhosphorSwift
 import SwiftUI
+import UIKit
 
 // MARK: - Types
 
@@ -112,16 +113,41 @@ public struct AppListItem: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            HStack(alignment: .top, spacing: .space3) {
-                leadingThumbnail
-                textContent
-                trailingSlot
-            }
-            .padding(.vertical, .space3)
+            rowContent
+                .contentShape(Rectangle())
+                .onTapGesture(perform: handleRowTap)
 
             if divider {
                 AppDivider()
             }
+        }
+    }
+
+    private var rowContent: some View {
+        HStack(alignment: .top, spacing: .space3) {
+            leadingThumbnail
+            textContent
+            trailingSlot
+        }
+        .padding(.vertical, .space3)
+    }
+
+    private func handleRowTap() {
+        guard let trailing else { return }
+        switch trailing {
+        case let .radio(checked, onChange):
+            if !checked {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                onChange(true)
+            }
+        case let .checkbox(checked, _, onChange):
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            onChange(!checked)
+        case let .toggle(checked, onChange):
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            onChange(!checked)
+        default:
+            break
         }
     }
 

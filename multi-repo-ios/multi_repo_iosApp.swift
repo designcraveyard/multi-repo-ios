@@ -30,6 +30,13 @@ struct multi_repo_iosApp: App {
                 }
             }
             .environment(authManager)
+            // Dismiss keyboard when tapping outside input fields
+            .onTapGesture {
+                UIApplication.shared.sendAction(
+                    #selector(UIResponder.resignFirstResponder),
+                    to: nil, from: nil, for: nil
+                )
+            }
             .onOpenURL { url in
                 // Handle Google Sign-In callback
                 GIDSignIn.sharedInstance.handle(url)
