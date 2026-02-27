@@ -18,6 +18,10 @@ extension NSAttributedString.Key {
     static let tableColumnCount = NSAttributedString.Key("md.tableColumnCount")
     /// Whether this table row is the header row (Bool).
     static let tableIsHeader = NSAttributedString.Key("md.tableIsHeader")
+    /// Custom highlight background for ==text== spans (UIColor).
+    /// NOT using system .backgroundColor — that draws sharp rects.
+    /// MarkdownLayoutManager reads this key and draws rounded rects instead.
+    static let highlightBackground = NSAttributedString.Key("md.highlightBackground")
 }
 
 // MARK: - Block Type
@@ -94,7 +98,20 @@ class MarkdownTextStorage: NSTextStorage {
 
     func applyMarkdownFormatting() {
         let fullRange = NSRange(location: 0, length: length)
-        guard fullRange.length > 0 else { return }
+        guard fullRange.length > 0 else {
+            lineBlocks = []
+            return
+        }
+
+        // Preserve image attachments before resetting attributes.
+        // processEditing wipes all attributes; without this, NSTextAttachment
+        // for embedded images would be destroyed on every keystroke.
+        var savedAttachments: [(NSRange, NSTextAttachment)] = []
+        backing.enumerateAttribute(.attachment, in: fullRange, options: []) { value, range, _ in
+            if let attachment = value as? NSTextAttachment {
+                savedAttachments.append((range, attachment))
+            }
+        }
 
         // Reset to default body style with 24pt line height
         let defaultAttrs: [NSAttributedString.Key: Any] = [
@@ -104,6 +121,26 @@ class MarkdownTextStorage: NSTextStorage {
             .baselineOffset: MarkdownLayout.bodyBaselineOffset,
         ]
         backing.setAttributes(defaultAttrs, range: fullRange)
+
+        // Restore image attachments and fix paragraph style for attachment lines.
+        // The default paragraph style caps line height at 24pt, which clips tall
+        // image attachments. We need to remove that cap so the text system
+        // allocates the full attachment height for the line fragment.
+        for (range, attachment) in savedAttachments {
+            if range.location + range.length <= backing.length {
+                backing.addAttribute(.attachment, value: attachment, range: range)
+
+                // Find the full line range containing this attachment
+                let lineRange = (backing.string as NSString).lineRange(for: range)
+
+                // Apply a paragraph style that allows the image to determine line height
+                let imgPara = NSMutableParagraphStyle()
+                imgPara.paragraphSpacing = MarkdownLayout.paragraphSpacing
+                imgPara.minimumLineHeight = 0
+                imgPara.maximumLineHeight = 0 // 0 = no cap, let attachment size dictate
+                backing.addAttribute(.paragraphStyle, value: imgPara, range: lineRange)
+            }
+        }
 
         // Classify lines
         lineBlocks = classifyLines()
@@ -120,21 +157,43 @@ class MarkdownTextStorage: NSTextStorage {
     // MARK: - Typing Attributes
 
     /// Returns appropriate typing attributes for the cursor at the given position.
-    /// Used to fix cursor height: body lines get body font, heading lines get heading font.
+    /// Used to fix cursor height and ensure typed characters are visible.
+    /// Heading lines get heading font; table rows get body font with visible text color
+    /// (critical: without this, typed text inside table cells inherits hidden/border styling).
     func typingAttributes(at position: Int) -> [NSAttributedString.Key: Any] {
         var font: UIFont = MarkdownFonts.body
+        var color: UIColor = MarkdownColors.text
+        var para = defaultParagraphStyle()
+
         for (lineRange, block) in lineBlocks {
             if position >= lineRange.location && position <= NSMaxRange(lineRange) {
-                if case .heading(let level) = block {
+                switch block {
+                case .heading(let level):
                     font = MarkdownFonts.heading(level: level)
+                case .tableRow:
+                    // Table rows are rendered by overlay — keep text invisible
+                    font = MarkdownFonts.body
+                    color = UIColor.clear
+                    let tablePara = NSMutableParagraphStyle()
+                    tablePara.minimumLineHeight = 44
+                    tablePara.maximumLineHeight = 44
+                    tablePara.paragraphSpacing = 0
+                    para = tablePara
+                case .tableSeparator:
+                    // Separator is collapsed — use small font to match
+                    font = UIFont.systemFont(ofSize: 0.01)
+                    color = UIColor.clear
+                default:
+                    break
                 }
                 break
             }
         }
         return [
             .font: font,
-            .foregroundColor: MarkdownColors.text,
-            .paragraphStyle: defaultParagraphStyle(),
+            .foregroundColor: color,
+            .paragraphStyle: para,
+            .baselineOffset: MarkdownLayout.bodyBaselineOffset,
         ]
     }
 
@@ -280,6 +339,30 @@ class MarkdownTextStorage: NSTextStorage {
         return (clean == "---" || clean == "***" || clean == "___") && stripped.count >= 3
     }
 
+    /// Returns the combined range for each contiguous group of table lines.
+    func tableGroups() -> [NSRange] {
+        var groups: [NSRange] = []
+        var currentStart: Int?
+        var currentEnd: Int = 0
+
+        for (range, block) in lineBlocks {
+            switch block {
+            case .tableRow, .tableSeparator:
+                if currentStart == nil { currentStart = range.location }
+                currentEnd = NSMaxRange(range)
+            default:
+                if let start = currentStart {
+                    groups.append(NSRange(location: start, length: currentEnd - start))
+                    currentStart = nil
+                }
+            }
+        }
+        if let start = currentStart {
+            groups.append(NSRange(location: start, length: currentEnd - start))
+        }
+        return groups
+    }
+
     /// Parse a markdown table row into cell strings.
     /// "| A | B | C |" → ["A", "B", "C"]
     static func parseTableCells(_ line: String) -> [String] {
@@ -406,14 +489,12 @@ class MarkdownTextStorage: NSTextStorage {
             backing.addAttributes([
                 .font: MarkdownFonts.codeBlock,
                 .foregroundColor: MarkdownColors.textMuted,
-                .backgroundColor: MarkdownColors.codeBackground,
             ], range: range)
 
         case .codeBlock:
             backing.addAttributes([
                 .font: MarkdownFonts.codeBlock,
                 .foregroundColor: MarkdownColors.codeText,
-                .backgroundColor: MarkdownColors.codeBackground,
             ], range: range)
 
         case .horizontalRule:
@@ -427,39 +508,39 @@ class MarkdownTextStorage: NSTextStorage {
 
         case .tableRow:
             let isHeader = index + 1 < lineBlocks.count && lineBlocks[index + 1].block == .tableSeparator
-            let font = isHeader ? MarkdownFonts.bodyBold : MarkdownFonts.body
 
-            // Parse cells and set up tab-stop-based column layout
-            let cells = Self.parseTableCells(line)
-            let columnCount = max(cells.count, 1)
-
+            // Table rows are rendered by a MarkdownTableView overlay.
+            // The text in storage is invisible — the overlay shows an editable grid.
+            // We allocate 44pt line height to match the overlay's cell height.
             let para = NSMutableParagraphStyle()
-            para.minimumLineHeight = MarkdownLayout.bodyLineHeight
-            para.maximumLineHeight = MarkdownLayout.bodyLineHeight
+            para.minimumLineHeight = 44
+            para.maximumLineHeight = 44
             para.paragraphSpacing = 0
+
             backing.addAttributes([
-                .font: font,
-                .foregroundColor: MarkdownColors.text,
+                .font: MarkdownFonts.body,
+                .foregroundColor: UIColor.clear,
                 .paragraphStyle: para,
                 .baselineOffset: MarkdownLayout.bodyBaselineOffset,
             ], range: range)
 
-            // Hide all pipe characters — grid is drawn by MarkdownLayoutManager
-            for (i, ch) in line.enumerated() where ch == "|" {
-                backing.addAttributes(Self.hiddenAttrs, range: NSRange(location: range.location + i, length: 1))
-            }
-
-            // Store column count for LayoutManager (via a custom attribute)
-            backing.addAttribute(.tableColumnCount, value: columnCount, range: range)
+            // Store metadata for overlay management
             backing.addAttribute(.tableIsHeader, value: isHeader, range: range)
 
         case .tableSeparator:
-            // Hide the separator row entirely — just a thin line drawn by MarkdownLayoutManager
-            backing.addAttributes(Self.hiddenAttrs, range: range)
+            // Collapse separator row to near-zero height. The separator line is drawn
+            // by MarkdownLayoutManager as a thicker border between header and data rows.
+            // We keep the text in the backing string (needed for markdown round-trip)
+            // but make it visually invisible and collapsed.
             let para = NSMutableParagraphStyle()
-            para.minimumLineHeight = 4
-            para.maximumLineHeight = 4
-            backing.addAttribute(.paragraphStyle, value: para, range: range)
+            para.minimumLineHeight = 1
+            para.maximumLineHeight = 1
+            para.paragraphSpacing = 0
+            backing.addAttributes([
+                .font: UIFont.systemFont(ofSize: 0.01),
+                .foregroundColor: UIColor.clear,
+                .paragraphStyle: para,
+            ], range: range)
 
         case .paragraph:
             break
@@ -488,8 +569,10 @@ class MarkdownTextStorage: NSTextStorage {
         let text = backing.string
         let nsText = text as NSString
 
-        // Determine code block ranges to skip inline formatting
-        var codeRanges: [NSRange] = []
+        // Determine code block and table ranges to skip inline formatting.
+        // Table rows contain pipe characters that can interfere with inline
+        // regex patterns (e.g. bold ** or strikethrough ~~), so we exclude them.
+        var skipRanges: [NSRange] = []
         var inCode = false
         var codeStart = 0
         for (range, block) in lineBlocks {
@@ -499,14 +582,16 @@ class MarkdownTextStorage: NSTextStorage {
                 codeStart = range.location
             case .codeFenceClose:
                 inCode = false
-                codeRanges.append(NSRange(location: codeStart, length: NSMaxRange(range) - codeStart))
+                skipRanges.append(NSRange(location: codeStart, length: NSMaxRange(range) - codeStart))
+            case .tableRow, .tableSeparator:
+                skipRanges.append(range)
             default:
                 break
             }
         }
 
         func isInCodeBlock(_ range: NSRange) -> Bool {
-            codeRanges.contains { NSIntersectionRange($0, range).length > 0 }
+            skipRanges.contains { NSIntersectionRange($0, range).length > 0 }
         }
 
         // Bold+Italic: ***text*** — MUST come before bold and italic
@@ -533,6 +618,11 @@ class MarkdownTextStorage: NSTextStorage {
         // Underline: ++text++ — extended markdown syntax
         applyInlineHidden(nsText: nsText, pattern: "\\+\\+(.+?)\\+\\+", markerLen: 2, isInCodeBlock: isInCodeBlock) { contentRange in
             self.backing.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: contentRange)
+        }
+
+        // Highlight: ==text== — custom background drawn by MarkdownLayoutManager
+        applyInlineHidden(nsText: nsText, pattern: "==(.+?)==", markerLen: 2, isInCodeBlock: isInCodeBlock) { contentRange in
+            self.backing.addAttribute(.highlightBackground, value: MarkdownColors.highlightBackground, range: contentRange)
         }
 
         // Strikethrough: ~~text~~

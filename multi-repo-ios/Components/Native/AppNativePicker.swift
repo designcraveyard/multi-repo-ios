@@ -107,20 +107,25 @@ public struct AppNativePicker<T: Hashable>: View {
     /// `Menu` with a chip-styled trigger. Tapping opens the native popover list.
     private func chipMenu(size: AppChipSize, variant: AppChipVariant) -> some View {
         Menu {
-            ForEach(options, id: \.label) { opt in
-                Button {
-                    selection = opt.value
-                    // Haptic feedback on option selection
-                    let generator = UIImpactFeedbackGenerator(style: .light)
-                    generator.impactOccurred()
-                } label: {
-                    // Show a checkmark next to the currently selected item
-                    if opt.value == selection {
-                        Label(opt.label, systemImage: "checkmark")
-                    } else {
-                        Text(opt.label)
+            // Haptic when the menu opens (Menu content is built on presentation)
+            Section {
+                ForEach(options, id: \.label) { opt in
+                    Button {
+                        selection = opt.value
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    } label: {
+                        if opt.value == selection {
+                            Label(opt.label, systemImage: "checkmark")
+                        } else {
+                            Text(opt.label)
+                        }
                     }
                 }
+            } header: {
+                Color.clear.frame(height: 0)
+                    .onAppear {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    }
             }
         } label: {
             chipTrigger(size: size, variant: variant)

@@ -204,6 +204,14 @@ enum MarkdownColors {
     static let strikethrough = UIColor(Color.typographyMuted)
 
 
+    // ── Highlight ─────────────────────────────────────────────────────
+    // ==highlighted text== uses a warning-toned background fill
+    // drawn as a rounded rect by MarkdownLayoutManager.
+
+    /// Highlight background — warm warning surface for ==text== spans.
+    static let highlightBackground = UIColor(Color.surfacesWarningSubtle)
+
+
     // ── Tables ───────────────────────────────────────────────────────
     // Table borders (pipe chars) and optional header row background.
 
@@ -286,6 +294,9 @@ enum MarkdownLayout {
     /// Corner radius for code block background.
     static let codeBlockCornerRadius: CGFloat = CGFloat.radiusMD
 
+    /// Corner radius for ==highlight== background rounded rects.
+    static let highlightCornerRadius: CGFloat = 3
+
 
     // ── Paragraph Spacing ────────────────────────────────────────────
     // Vertical space BETWEEN paragraphs (not within — that's line height).
@@ -362,29 +373,29 @@ enum MarkdownSymbols {
 
 enum MarkdownToolbarStyling {
 
-    /// Toolbar total height including padding.
-    static let height: CGFloat = 48
+    /// Toolbar total height including padding — 52pt for breathing room.
+    static let height: CGFloat = 52
 
     /// Individual button tap target size.
-    static let buttonSize: CGFloat = 36
+    static let buttonSize: CGFloat = 38
 
-    /// Button corner radius for rounded appearance.
-    static let buttonCornerRadius: CGFloat = 8
+    /// Button corner radius for rounder glass buttons.
+    static let buttonCornerRadius: CGFloat = 10
 
     /// SF Symbol point size for toolbar button icons.
-    static let iconPointSize: CGFloat = 15
+    static let iconPointSize: CGFloat = 16
 
     /// SF Symbol weight for toolbar button icons.
     static let iconWeight: UIImage.SymbolWeight = .medium
 
-    /// Horizontal spacing between buttons.
-    static let buttonSpacing: CGFloat = 2
+    /// Horizontal spacing between buttons — tight for glass look.
+    static let buttonSpacing: CGFloat = 1
 
     /// Divider height between button groups.
     static let dividerHeight: CGFloat = 24
 
-    /// Horizontal padding on toolbar edges.
-    static let edgePadding: CGFloat = 8
+    /// Horizontal padding on toolbar edges — more breathing room.
+    static let edgePadding: CGFloat = 12
 }
 
 

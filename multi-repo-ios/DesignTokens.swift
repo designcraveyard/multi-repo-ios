@@ -38,24 +38,11 @@ private func adaptive(light: String, dark: String) -> Color {
 }
 
 // MARK: - LAYER 1: Primitive Color Tokens  (Figma collection: "Primitives")
-// Names: colorSlate50, colorZinc950, colorGreen600, …
+// Names: colorNeutral50, colorZinc950, colorGreen600, …
 // These are the raw Tailwind palette values — never use directly in UI code.
 // UI code must reference Semantic tokens below.
 
 extension Color {
-
-    // ── Slate ─────────────────────────────────────────────────────────────────
-    static let colorSlate50:  Color = Color(hex: "#F8FAFC")
-    static let colorSlate100: Color = Color(hex: "#F1F5F9")
-    static let colorSlate200: Color = Color(hex: "#E2E8F0")
-    static let colorSlate300: Color = Color(hex: "#CBD5E1")
-    static let colorSlate400: Color = Color(hex: "#94A3B8")
-    static let colorSlate500: Color = Color(hex: "#64748B")
-    static let colorSlate600: Color = Color(hex: "#475569")
-    static let colorSlate700: Color = Color(hex: "#334155")
-    static let colorSlate800: Color = Color(hex: "#1E293B")
-    static let colorSlate900: Color = Color(hex: "#0F172A")
-    static let colorSlate950: Color = Color(hex: "#020617")
 
     // ── Zinc ──────────────────────────────────────────────────────────────────
     static let colorZinc50:  Color = Color(hex: "#FAFAFA")
@@ -246,17 +233,17 @@ extension Color {
 
     // ── Typography ────────────────────────────────────────────────────────────
     /// Figma: Typography/Primary
-    static let typographyPrimary                = adaptive(light: "#0F172A", dark: "#F8FAFC")
+    static let typographyPrimary                = adaptive(light: "#171717", dark: "#FAFAFA")
     /// Figma: Typography/Secondary
-    static let typographySecondary              = adaptive(light: "#334155", dark: "#CBD5E1")
+    static let typographySecondary              = adaptive(light: "#404040", dark: "#D4D4D4")
     /// Figma: Typography/Muted
-    static let typographyMuted                  = adaptive(light: "#64748B", dark: "#94A3B8")
+    static let typographyMuted                  = adaptive(light: "#737373", dark: "#A3A3A3")
     /// Figma: Typography/InversePrimary
-    static let typographyInversePrimary         = adaptive(light: "#F8FAFC", dark: "#020617")
+    static let typographyInversePrimary         = adaptive(light: "#FAFAFA", dark: "#0A0A0A")
     /// Figma: Typography/InverseSecondary
-    static let typographyInverseSecondary       = adaptive(light: "#CBD5E1", dark: "#334155")
+    static let typographyInverseSecondary       = adaptive(light: "#D4D4D4", dark: "#404040")
     /// Figma: Typography/InverseMuted
-    static let typographyInverseMuted           = adaptive(light: "#64748B", dark: "#64748B")
+    static let typographyInverseMuted           = adaptive(light: "#737373", dark: "#737373")
     /// Figma: Typography/Brand
     static let typographyBrand                  = adaptive(light: "#09090B", dark: "#FAFAFA")
     /// Figma: Typography/OnBrandPrimary
@@ -276,21 +263,21 @@ extension Color {
 
     // ── Icons ─────────────────────────────────────────────────────────────────
     /// Figma: Icons/Primary
-    static let iconsPrimary                     = adaptive(light: "#020617", dark: "#F8FAFC")
+    static let iconsPrimary                     = adaptive(light: "#0A0A0A", dark: "#FAFAFA")
     /// Figma: Icons/Secondary
-    static let iconsSecondary                   = adaptive(light: "#475569", dark: "#94A3B8")
+    static let iconsSecondary                   = adaptive(light: "#525252", dark: "#A3A3A3")
     /// Figma: Icons/Muted
-    static let iconsMuted                       = adaptive(light: "#94A3B8", dark: "#334155")
+    static let iconsMuted                       = adaptive(light: "#A3A3A3", dark: "#404040")
     /// Figma: Icons/InversePrimary
-    static let iconsInversePrimary              = adaptive(light: "#F8FAFC", dark: "#020617")
+    static let iconsInversePrimary              = adaptive(light: "#FAFAFA", dark: "#0A0A0A")
     /// Figma: Icons/InverseSecondary
-    static let iconsInverseSecondary            = adaptive(light: "#94A3B8", dark: "#475569")
+    static let iconsInverseSecondary            = adaptive(light: "#A3A3A3", dark: "#525252")
     /// Figma: Icons/InverseMuted
-    static let iconsInverseMuted                = adaptive(light: "#1E293B", dark: "#94A3B8")
+    static let iconsInverseMuted                = adaptive(light: "#262626", dark: "#A3A3A3")
     /// Figma: Icons/Brand
     static let iconsBrand                       = adaptive(light: "#09090B", dark: "#FAFAFA")
     /// Figma: Icons/OnBrandPrimary
-    static let iconsOnBrandPrimary              = adaptive(light: "#F8FAFC", dark: "#020617")
+    static let iconsOnBrandPrimary              = adaptive(light: "#FAFAFA", dark: "#0A0A0A")
     /// Figma: Icons/Accent
     static let iconsAccent                      = adaptive(light: "#4338CA", dark: "#A5B4FC")
     /// Figma: Icons/Success
@@ -308,11 +295,11 @@ extension Color {
     /// Figma: Border/Brand
     static let borderBrand                      = adaptive(light: "#09090B", dark: "#FAFAFA")
     /// Figma: Border/Active
-    static let borderActive                     = adaptive(light: "#020617", dark: "#F8FAFC")
+    static let borderActive                     = adaptive(light: "#0A0A0A", dark: "#FAFAFA")
     /// Figma: Border/Default
-    static let borderDefault                    = adaptive(light: "#E5E5E5", dark: "#1E293B")
+    static let borderDefault                    = adaptive(light: "#E5E5E5", dark: "#262626")
     /// Figma: Border/Muted
-    static let borderMuted                      = adaptive(light: "#F5F5F5", dark: "#0F172A")
+    static let borderMuted                      = adaptive(light: "#F5F5F5", dark: "#171717")
     /// Figma: Border/Success
     static let borderSuccess                    = adaptive(light: "#16A34A", dark: "#86EFAC")
     /// Figma: Border/Warning

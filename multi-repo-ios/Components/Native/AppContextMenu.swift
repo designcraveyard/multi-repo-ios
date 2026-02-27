@@ -102,6 +102,7 @@ public struct AppPopoverMenu<Label: View>: View {
                             HStack(spacing: NativeContextMenuStyling.Layout.itemIconSpacing) {
                                 if let icon = item.icon {
                                     icon
+                                        .frame(width: 20, height: 20)
                                         .foregroundStyle(item.role == .destructive
                                             ? NativeContextMenuStyling.Colors.destructiveText
                                             : NativeContextMenuStyling.Colors.itemText)
@@ -125,11 +126,10 @@ public struct AppPopoverMenu<Label: View>: View {
                         }
                     }
                 }
-                .frame(minWidth: NativeContextMenuStyling.Layout.minWidth)
-                .background(NativeContextMenuStyling.Colors.background)
-                .clipShape(RoundedRectangle(cornerRadius: NativeContextMenuStyling.Layout.cornerRadius))
-                // Prevents the popover expanding to a sheet on compact size classes
+                .padding(.vertical, NativeContextMenuStyling.Layout.menuPaddingV)
+                .frame(minWidth: 200)
                 .presentationCompactAdaptation(.popover)
+                .presentationBackground(Color.surfacesBasePrimary)
             }
     }
 }

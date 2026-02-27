@@ -1,5 +1,18 @@
 import SwiftUI
+import UIKit
 import PhosphorSwift
+
+// MARK: - ShareSheet
+
+private struct ShareSheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
 
 // MARK: - Section Header
 
@@ -61,11 +74,13 @@ struct ContentView: View {
     // Toast
     @State private var showToast = false
     @State private var toastMessage = ""
+    @State private var toastVariant: AppToastVariant = .default
 
     // InputField
     @State private var name = ""
     @State private var email = "user@example"
     @State private var bio = ""
+    @State private var textOnlyValue = ""
 
     // --- Native Components ---
     @State private var pickerSelected = "AU"
@@ -85,6 +100,10 @@ struct ContentView: View {
     @State private var sliderStepHigh = 60.0
     @State private var sheetFormName = ""
     @State private var sheetFormEmail = ""
+
+    // Input Field — Picker Slots
+    @State private var inputLeadingCurrency = "USD"
+    @State private var inputTrailingUnit = "kg"
 
     // Form — Pickers + Input Fields
     @State private var formName = ""
@@ -155,6 +174,25 @@ struct ContentView: View {
         }
     }
 
+    // MARK: - Toast Helper
+
+    /// Dismisses the current toast (if any) before showing a new one,
+    /// preventing color interpolation artifacts when the spring animation is mid-flight.
+    private func showToastWith(message: String, variant: AppToastVariant) {
+        if showToast {
+            withAnimation { showToast = false }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                toastMessage = message
+                toastVariant = variant
+                withAnimation { showToast = true }
+            }
+        } else {
+            toastMessage = message
+            toastVariant = variant
+            withAnimation { showToast = true }
+        }
+    }
+
     // MARK: - Showcase Tab
 
     private var showcaseTab: some View {
@@ -215,7 +253,7 @@ struct ContentView: View {
                     ShowcaseSection(title: "Button — States") {
                         VStack(alignment: .leading, spacing: 10) {
                             AppButton(
-                                label: isLoading ? "Loading…" : "Tap to Load",
+                                label: "Tap to Load",
                                 variant: .primary,
                                 isLoading: isLoading
                             ) {
@@ -537,28 +575,50 @@ struct ContentView: View {
                     }
 
                     // ── Toast ─────────────────────────────────────────────
-                    ShowcaseSection(title: "Toast — Default") {
+                    ShowcaseSection(title: "Toast — Variants") {
                         VStack(spacing: .space3) {
-                            AppToast(message: "Settings saved", dismissible: true)
-                            AppToast(message: "Upload complete!", description: "Your file is ready to share.")
-                            AppToast(message: "Connection unstable", actionLabel: "Retry") {}
-                            AppToast(message: "Failed to save", description: "Check your connection.", dismissible: true)
-                            AppToast(message: "New update available", actionLabel: "Update now") {}
+                            AppToast(message: "Settings saved", variant: .default, description: "Your preferences have been updated.", dismissible: true)
+                            AppToast(message: "Upload complete!", variant: .success, description: "Your file is ready to share.")
+                            AppToast(message: "Connection unstable", variant: .warning, actionLabel: "Retry") {}
+                            AppToast(message: "Failed to save", variant: .error, description: "Check your connection.", dismissible: true)
+                        }
+                    }
+
+                    ShowcaseSection(title: "Toast — With buttons") {
+                        VStack(spacing: .space3) {
+                            AppToast(message: "New update available", variant: .default, actionLabel: "Update now") {}
+                            AppToast(
+                                message: "Item archived",
+                                variant: .default,
+                                description: "Moved to trash.",
+                                trailingIconButton: ToastTrailingIconButton(
+                                    icon: AnyView(Image(systemName: "arrow.uturn.backward").resizable().scaledToFit()),
+                                    action: {}
+                                )
+                            )
+                            AppToast(
+                                message: "Message sent",
+                                variant: .success,
+                                trailingIconButton: ToastTrailingIconButton(
+                                    icon: AnyView(Image(systemName: "eye").resizable().scaledToFit()),
+                                    action: {}
+                                ),
+                                dismissible: true
+                            )
                         }
                     }
 
                     ShowcaseSection(title: "Toast — Live trigger") {
                         HScrollRow {
                             HStack(spacing: .space2) {
-                                ForEach([
-                                    "Settings saved",
-                                    "Upload complete",
-                                    "Connection error",
-                                ], id: \.self) { label in
-                                    AppButton(label: label, variant: .secondary, size: .sm) {
-                                        toastMessage = label
-                                        withAnimation { showToast = true }
-                                    }
+                                AppButton(label: "Settings saved", variant: .secondary, size: .sm) {
+                                    showToastWith(message: "Settings saved", variant: .default)
+                                }
+                                AppButton(label: "Upload complete", variant: .success, size: .sm) {
+                                    showToastWith(message: "Upload complete", variant: .success)
+                                }
+                                AppButton(label: "Connection error", variant: .danger, size: .sm) {
+                                    showToastWith(message: "Connection error", variant: .error)
                                 }
                             }
                             .padding(.trailing, .space4)
@@ -578,6 +638,16 @@ struct ContentView: View {
 
                     ShowcaseSection(title: "Text Field (multiline)") {
                         AppTextField(text: $bio, label: "Bio", placeholder: "Tell us about yourself…")
+                    }
+
+                    ShowcaseSection(title: "TextOnly Field (bare input)") {
+                        VStack(alignment: .leading, spacing: .space3) {
+                            AppTextOnlyField(text: $textOnlyValue, placeholder: "Type here — no chrome…")
+                            AppDivider(type: .row)
+                            Text("Used inside complex components like chat inputs or inline editors. No background, no border.")
+                                .font(.appCaptionSmall)
+                                .foregroundStyle(Color.typographyMuted)
+                        }
                     }
 
                     // ── Thumbnail ─────────────────────────────────────────
@@ -711,8 +781,65 @@ struct ContentView: View {
                         }
                     }
 
-                    // ── Input Field — Label Slots ──────────────────────────
-                    ShowcaseSection(title: "Input Field — Label Slots") {
+                    // ── Input Field — Picker Slots ────────────────────────
+                    ShowcaseSection(title: "Input Field — Picker Slots") {
+                        VStack(spacing: .space3) {
+                            AppInputField(
+                                text: $bio,
+                                label: "Leading picker",
+                                placeholder: "0.00",
+                                leadingPicker: .picker(
+                                    label: "Currency",
+                                    selection: $inputLeadingCurrency,
+                                    options: [("USD", "USD"), ("EUR", "EUR"), ("GBP", "GBP"), ("INR", "INR")]
+                                ),
+                                leadingSeparator: true
+                            )
+                            AppInputField(
+                                text: $bio,
+                                label: "Trailing picker",
+                                placeholder: "Enter weight",
+                                trailingPicker: .picker(
+                                    label: "Unit",
+                                    selection: $inputTrailingUnit,
+                                    options: [("kg", "kg"), ("lb", "lb"), ("oz", "oz")]
+                                ),
+                                trailingSeparator: true
+                            )
+                            AppInputField(
+                                text: $bio,
+                                label: "Both pickers + separators",
+                                placeholder: "0.00",
+                                leadingPicker: .picker(
+                                    label: "From",
+                                    selection: $inputLeadingCurrency,
+                                    options: [("USD", "USD"), ("EUR", "EUR"), ("GBP", "GBP")]
+                                ),
+                                trailingPicker: .picker(
+                                    label: "Unit",
+                                    selection: $inputTrailingUnit,
+                                    options: [("kg", "kg"), ("lb", "lb")]
+                                ),
+                                leadingSeparator: true,
+                                trailingSeparator: true
+                            )
+                            AppInputField(
+                                text: .constant("42.00"),
+                                label: "Picker + success state",
+                                state: .success,
+                                hint: "Valid amount",
+                                leadingPicker: .picker(
+                                    label: "Currency",
+                                    selection: $inputLeadingCurrency,
+                                    options: [("USD", "USD"), ("EUR", "EUR")]
+                                ),
+                                leadingSeparator: true
+                            )
+                        }
+                    }
+
+                    // ── Input Field — Static Labels ──────────────────────────
+                    ShowcaseSection(title: "Input Field — Static Labels") {
                         VStack(spacing: .space3) {
                             AppInputField(
                                 text: $bio,
@@ -735,27 +862,12 @@ struct ContentView: View {
                             )
                             AppInputField(
                                 text: $bio,
-                                label: "Trailing label + separator",
-                                placeholder: "Enter amount",
-                                trailingLabel: AnyView(AppLabel(label: "kg", size: .md, type: .information)),
-                                trailingSeparator: true
-                            )
-                            AppInputField(
-                                text: $bio,
                                 label: "Both labels + separators",
                                 placeholder: "0.00",
                                 leadingLabel: AnyView(AppLabel(label: "From", size: .md, type: .secondaryAction)),
                                 trailingLabel: AnyView(AppLabel(label: "USD", size: .md, type: .brandInteractive)),
                                 leadingSeparator: true,
                                 trailingSeparator: true
-                            )
-                            AppInputField(
-                                text: .constant("42.00"),
-                                label: "Label slot + success state",
-                                state: .success,
-                                hint: "Valid amount",
-                                leadingLabel: AnyView(AppLabel(label: "USD", size: .md, type: .secondaryAction)),
-                                leadingSeparator: true
                             )
                         }
                     }
@@ -1050,6 +1162,69 @@ struct ContentView: View {
                         }
                     }
 
+                    // ── Picker — Triggered from Components ──────────────
+                    ShowcaseSection(title: "Picker — Triggered from Components") {
+                        VStack(alignment: .leading, spacing: .space3) {
+                            Text("Pickers can be triggered from any component using Menu:")
+                                .font(.appCaptionSmall)
+                                .foregroundStyle(Color.typographyMuted)
+
+                            HScrollRow {
+                                HStack(spacing: .space3) {
+                                    // Picker from Button
+                                    Menu {
+                                        ForEach(["Australia", "India", "USA"], id: \.self) { option in
+                                            Button(option) { pickerSelected = option == "Australia" ? "AU" : option == "India" ? "IN" : "US" }
+                                        }
+                                    } label: {
+                                        AppButton(label: "Pick Country", variant: .secondary, size: .sm) {}
+                                            .allowsHitTesting(false)
+                                    }
+
+                                    // Picker from Chip
+                                    Menu {
+                                        ForEach(["Small", "Medium", "Large"], id: \.self) { option in
+                                            Button(option) { }
+                                        }
+                                    } label: {
+                                        HStack(spacing: 4) {
+                                            AppChip(label: "Size", variant: .chipTabs, size: .md, isActive: false) {}
+                                                .allowsHitTesting(false)
+                                            Image(systemName: "chevron.down")
+                                                .font(.system(size: 10, weight: .semibold))
+                                                .foregroundStyle(Color.typographySecondary)
+                                        }
+                                    }
+
+                                    // Picker from IconButton
+                                    Menu {
+                                        ForEach(["Sort A\u{2013}Z", "Sort Z\u{2013}A", "Newest"], id: \.self) { option in
+                                            Button(option) { }
+                                        }
+                                    } label: {
+                                        AppIconButton(icon: AnyView(Ph.funnel.regular), label: "Filter", variant: .tertiary) {}
+                                            .allowsHitTesting(false)
+                                    }
+
+                                    // Picker from Label
+                                    Menu {
+                                        ForEach(["USD", "EUR", "GBP", "INR"], id: \.self) { option in
+                                            Button(option) { }
+                                        }
+                                    } label: {
+                                        HStack(spacing: 4) {
+                                            AppLabel(label: "USD", size: .md, type: .secondaryAction)
+                                            Image(systemName: "chevron.down")
+                                                .font(.system(size: 10, weight: .semibold))
+                                                .foregroundStyle(Color.typographySecondary)
+                                        }
+                                    }
+                                }
+                                .padding(.trailing, .space4)
+                            }
+                        }
+                    }
+
                     // ── DateTimePicker ────────────────────────────────────
                     ShowcaseSection(title: "DateTimePicker — Compact") {
                         AppDateTimePicker(label: "Date", selection: $selectedDate)
@@ -1208,25 +1383,15 @@ struct ContentView: View {
                                 ScrollView {
                                     VStack(spacing: 0) {
                                         ForEach(["Favourites", "Recent", "Documents", "Photos", "Music", "Videos", "Books", "Mail"], id: \.self) { label in
-                                            Button {
-                                                showSheetList = false
-                                            } label: {
-                                                HStack(spacing: .space3) {
-                                                    sheetListIcon(label)
-                                                        .frame(width: 24)
-                                                        .foregroundStyle(Color.appIconPrimary)
-                                                    Text(label)
-                                                        .font(.appBodyMedium)
-                                                        .foregroundStyle(Color.typographyPrimary)
-                                                    Spacer()
-                                                    Ph.caretRight.regular
-                                                        .iconSize(.sm)
-                                                        .foregroundStyle(Color.typographyMuted)
-                                                }
-                                                .padding(.vertical, .space3)
-                                            }
-                                            .buttonStyle(.plain)
-                                            AppDivider(type: .row)
+                                            AppListItem(
+                                                title: label,
+                                                trailing: .iconButton(
+                                                    icon: AnyView(Ph.caretRight.regular.iconSize(.sm)),
+                                                    accessibilityLabel: "Open \(label)",
+                                                    action: { showSheetList = false }
+                                                ),
+                                                divider: true
+                                            )
                                         }
                                     }
                                 }
@@ -1444,15 +1609,17 @@ struct ContentView: View {
                 }
             }
         .toastOverlay(isPresented: $showToast) {
-            AppToast(message: toastMessage, dismissible: true, onDismiss: {
+            AppToast(message: toastMessage, variant: toastVariant, dismissible: true, onDismiss: {
                 withAnimation { showToast = false }
             })
+            .id("\(toastMessage)-\(toastVariant)")
         }
     }
 
     // MARK: - Editor Tab (Apple Notes-style full page)
 
     @State private var showRawOutput = false
+    @State private var showShareSheet = false
 
     private var editorTab: some View {
         VStack(spacing: 0) {
@@ -1480,7 +1647,7 @@ struct ContentView: View {
             }
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Button {
-                    // Share action placeholder
+                    showShareSheet = true
                 } label: {
                     Ph.shareNetwork.regular
                         .iconSize(.md)
@@ -1527,6 +1694,13 @@ struct ContentView: View {
                         .foregroundStyle(Color.typographySecondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
+            }
+        }
+        .sheet(isPresented: $showShareSheet) {
+            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("notes.md")
+            if let _ = try? editorMarkdown.write(to: tempURL, atomically: true, encoding: .utf8) {
+                ShareSheet(activityItems: [tempURL])
+                    .presentationDetents([.medium, .large])
             }
         }
     }

@@ -28,28 +28,20 @@ private struct AppBottomSheetModifier<SheetContent: View>: ViewModifier {
 
     // Tracks the active snap point so we can detect detent changes for haptics.
     @State private var selectedDetent: PresentationDetent = .medium
+    @Environment(\.colorScheme) private var colorScheme
 
     func body(content: Content) -> some View {
         content
             .sheet(isPresented: $isPresented) {
                 sheetContent()
-                    // Controls which heights the sheet can snap to.
-                    // .medium ≈ 50% of screen, .large ≈ 90% of screen.
-                    // The selection binding lets us observe snap-point changes.
                     .presentationDetents(detents, selection: $selectedDetent)
-                    // Shows or hides the drag indicator pill at the top.
                     .presentationDragIndicator(NativeBottomSheetStyling.Layout.dragIndicatorVisibility)
-                    // Rounds the top corners of the sheet.
                     .presentationCornerRadius(NativeBottomSheetStyling.Layout.cornerRadius)
-                    // Background fill of the sheet surface.
-                    .presentationBackground(NativeBottomSheetStyling.Colors.sheetBackground)
-                    // Padding around sheet content.
+                    .presentationBackground(NativeBottomSheetStyling.Colors.sheetBackground(for: colorScheme))
                     .padding(.horizontal, NativeBottomSheetStyling.Layout.contentPaddingH)
                     .padding(.top, NativeBottomSheetStyling.Layout.contentPaddingTop)
-                    // Haptic feedback when the sheet snaps to a new detent
                     .onChange(of: selectedDetent) { _, _ in
-                        let generator = UIImpactFeedbackGenerator(style: .medium)
-                        generator.impactOccurred()
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     }
             }
     }

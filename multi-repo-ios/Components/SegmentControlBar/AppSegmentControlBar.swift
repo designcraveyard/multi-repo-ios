@@ -73,6 +73,13 @@ public struct AppSegmentControlBar: View {
     let size: AppSegmentBarSize
 
     @Namespace private var thumbNamespace
+    @Environment(\.colorScheme) private var colorScheme
+
+    /// Light mode: white thumb (BasePrimary) for max contrast on grey track.
+    /// Dark mode: subtle grey thumb (BaseHighContrast) for elevated appearance.
+    private var segmentThumbColor: Color {
+        colorScheme == .dark ? Color.surfacesBaseHighContrast : Color.surfacesBasePrimary
+    }
 
     public init(
         items: [AppSegmentItem],
@@ -125,10 +132,10 @@ public struct AppSegmentControlBar: View {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
         } label: {
             ZStack {
-                // Sliding thumb
+                // Sliding thumb — white in light, subtle grey in dark
                 if isActive {
                     Capsule()
-                        .fill(Color.surfacesBasePrimary)
+                        .fill(segmentThumbColor)
                         .shadow(color: Color.black.opacity(0.08), radius: 2, x: 0, y: 1)
                         .matchedGeometryEffect(id: "segmentThumb", in: thumbNamespace)
                 }

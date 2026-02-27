@@ -104,8 +104,8 @@ enum NativeDatePickerStyling {
         //   • The "today" ring indicator
         //   • The spinner drum highlight band in .wheel style
         //   • The disclosure button in .compact style
-        // Change to Color.appSurfaceBrand for a monochrome-brand calendar.
-        static let tint = Color.appSurfaceBrand
+        // Uses brand primary for the selected date circle (near-black light, near-white dark).
+        static let tint = Color.surfacesBrandInteractive
 
         // Foreground color for the picker label text (the text passed as `label:`).
         // In .compact style this appears to the left of the date button.
@@ -216,9 +216,12 @@ enum NativeBottomSheetStyling {
 
     struct Colors {
         // Fill color of the sheet's background surface.
-        // Use appSurfaceBasePrimary for a standard white/black sheet.
-        // Use appSurfaceBaseLowContrast for a slightly elevated off-white sheet.
-        static let sheetBackground = Color.appSurfaceBasePrimary
+        // Light: BasePrimary (white) — inputs (BaseLowContrast) are visible.
+        // Dark: BaseHighContrast (#262626) — elevated above the near-black app bg,
+        //       and inputs (BaseLowContrast #171717) appear darker = visible.
+        static func sheetBackground(for colorScheme: ColorScheme) -> Color {
+            colorScheme == .dark ? Color.surfacesBaseHighContrast : Color.surfacesBasePrimary
+        }
 
         // Color of the drag indicator (the small rounded pill at the top of the sheet).
         // iOS tints this automatically; this value is used for any custom indicator
@@ -462,7 +465,10 @@ enum NativeContextMenuStyling {
     struct Layout {
         // Minimum width of the AppPopoverMenu card in points.
         // Prevents the popover from being too narrow for long labels.
-        static let minWidth: CGFloat = 180
+        static let minWidth: CGFloat = 200
+
+        // Vertical padding around the entire menu (top/bottom of the VStack).
+        static let menuPaddingV = CGFloat.space2    // 8px
 
         // Horizontal padding inside each menu row.
         static let itemPaddingH = CGFloat.space4    // 16px
@@ -633,7 +639,7 @@ enum NativeRangeSliderStyling {
         // Note: SwiftUI's Slider uses a system white thumb that cannot be recolored
         // without a custom gesture approach. This token is reserved for future use
         // if the implementation is upgraded to a fully custom drag gesture slider.
-        static let thumb = Color.appSurfaceBasePrimary
+        static let thumb = Color.surfacesBrandInteractive
 
         // Shadow/border around each thumb to make it pop against the track.
         static let thumbShadow = Color.appBorderDefault

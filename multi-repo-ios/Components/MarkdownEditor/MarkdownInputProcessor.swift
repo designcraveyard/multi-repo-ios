@@ -20,14 +20,20 @@ struct MarkdownInputProcessor {
         replacementText text: String,
         textStorage: MarkdownTextStorage
     ) -> Bool {
+        // Check if cursor is inside a table row
+        let currentBlock = blockAtPosition(range.location, in: textStorage)
+
+        // Tab key handling — table cell navigation takes priority
+        if text == "\t" {
+            if case .tableRow = currentBlock {
+                return handleTableTab(textView: textView, range: range, textStorage: textStorage, reverse: false)
+            }
+            return handleTab(textView: textView, range: range, textStorage: textStorage, reverse: false)
+        }
+
         // Enter key handling
         if text == "\n" {
             return handleEnter(textView: textView, range: range, textStorage: textStorage)
-        }
-
-        // Tab key handling (indent in lists)
-        if text == "\t" {
-            return handleTab(textView: textView, range: range, textStorage: textStorage, reverse: false)
         }
 
         return false
@@ -212,6 +218,88 @@ struct MarkdownInputProcessor {
             else if s.hasPrefix(">") { s = s.dropFirst(1) }
         }
         return s.trimmingCharacters(in: .whitespaces)
+    }
+
+    // MARK: - Table Cell Navigation (Tab)
+
+    /// Tab inside a table row: move cursor to the next cell (after the next pipe).
+    /// If at the last cell, move to the first cell of the next row.
+    private static func handleTableTab(
+        textView: UITextView,
+        range: NSRange,
+        textStorage: MarkdownTextStorage,
+        reverse: Bool
+    ) -> Bool {
+        let nsString = textStorage.string as NSString
+        let fullLength = nsString.length
+
+        if reverse {
+            // Shift+Tab: move to previous cell
+            // Search backward from cursor for a pipe, then backward again to find the start of the previous cell
+            var pos = range.location - 1
+            // Skip current pipe if cursor is right after one
+            if pos >= 0 && nsString.character(at: pos) == pipeChar { pos -= 1 }
+            // Find the pipe before the previous cell
+            while pos >= 0 && nsString.character(at: pos) != pipeChar { pos -= 1 }
+            if pos >= 0 {
+                // Position cursor right after this pipe (skip space)
+                let target = pos + 1
+                let cursorPos = target < fullLength && nsString.character(at: target) == spaceChar ? target + 1 : target
+                textView.selectedRange = NSRange(location: cursorPos, length: 0)
+                return true
+            }
+        } else {
+            // Forward Tab: find the next pipe after cursor, place cursor after it
+            var pos = range.location
+            while pos < fullLength && nsString.character(at: pos) != pipeChar { pos += 1 }
+            // Skip the pipe we found
+            if pos < fullLength { pos += 1 }
+            // If we're at end of line (newline or end of text), try next table row
+            if pos >= fullLength || nsString.character(at: pos) == newlineChar {
+                // Move past the newline
+                if pos < fullLength { pos += 1 }
+                // Skip separator row if present
+                let sepLineRange = nsString.lineRange(for: NSRange(location: min(pos, fullLength - 1), length: 0))
+                let sepLine = nsString.substring(with: sepLineRange).trimmingCharacters(in: .whitespacesAndNewlines)
+                if isSeparatorRow(sepLine) {
+                    pos = NSMaxRange(sepLineRange)
+                    if pos < fullLength && nsString.character(at: pos) == newlineChar { pos += 1 }
+                }
+                // Now pos should be at the start of the next data row — skip leading pipe + space
+                if pos < fullLength && nsString.character(at: pos) == pipeChar { pos += 1 }
+                if pos < fullLength && nsString.character(at: pos) == spaceChar { pos += 1 }
+            } else {
+                // Skip space after pipe
+                if pos < fullLength && nsString.character(at: pos) == spaceChar { pos += 1 }
+            }
+            textView.selectedRange = NSRange(location: min(pos, fullLength), length: 0)
+            return true
+        }
+
+        return false
+    }
+
+    // MARK: - Table Helpers
+
+    /// Returns the block type at the given character position.
+    private static func blockAtPosition(_ position: Int, in textStorage: MarkdownTextStorage) -> MarkdownBlockType {
+        for (lineRange, block) in textStorage.lineBlocks {
+            if position >= lineRange.location && position <= NSMaxRange(lineRange) {
+                return block
+            }
+        }
+        return .paragraph
+    }
+
+    private static let pipeChar: unichar = 0x7C   // "|"
+    private static let spaceChar: unichar = 0x20   // " "
+    private static let newlineChar: unichar = 0x0A // "\n"
+
+    private static func isSeparatorRow(_ line: String) -> Bool {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard trimmed.hasPrefix("|") && trimmed.hasSuffix("|") else { return false }
+        let inner = trimmed.dropFirst().dropLast()
+        return inner.allSatisfy { "- |:".contains($0) } && inner.contains("-")
     }
 
     // MARK: - Text Manipulation Helpers
