@@ -190,6 +190,34 @@ else { LoginView() }
 ## Screens / Views
 
 - `Views/Auth/LoginView.swift` — Login screen
-- `ContentView.swift` — Main view (shown after auth)
+- `ContentView.swift` — Main view (shown after auth) — 5 tabs: Components, Editor, AI Demo, Settings, Assistant
+- `Views/AIDemoView.swift` — AI Demo (Transform/Transcribe)
+- `Views/AssistantView.swift` — AI Assistant (WebView loading ChatKit)
 
 _Add new `*View.swift` entries here as features are added via `/cross-platform-feature` or `/new-screen`._
+
+---
+
+## AppWebView (Native WebView Wrapper)
+
+**File:** `Components/Native/AppWebView.swift`
+
+Reusable `WKWebView` wrapper via `UIViewRepresentable`. JavaScript enabled by default.
+
+```swift
+// Basic
+AppWebView(url: URL(string: "https://example.com")!)
+
+// With loading state
+@State private var isLoading = true
+AppWebView(url: myURL, isLoading: $isLoading)
+
+// With error handler
+AppWebView(url: myURL, isLoading: $isLoading) { error in
+    print("WebView error: \(error)")
+}
+```
+
+**Props:** `url: URL`, `isLoading: Binding<Bool>` (default `.constant(false)`), `onError: ((Error) -> Void)?`
+
+**ATS:** `NSAllowsLocalNetworking` is enabled in `Info.plist` for loading `http://` URLs on local network (e.g. `192.168.x.x` dev servers).

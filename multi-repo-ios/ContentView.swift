@@ -142,14 +142,16 @@ struct ContentView: View {
             tabs: [
                 AppNavTab(id: 0, label: "Components", icon: "square.grid.2x2"),
                 AppNavTab(id: 1, label: "Editor",     icon: "doc.richtext"),
-                AppNavTab(id: 2, label: "Explore",    icon: "safari"),
+                AppNavTab(id: 2, label: "AI Demo",    icon: "sparkles"),
                 AppNavTab(id: 3, label: "Settings",   icon: "gearshape"),
+                AppNavTab(id: 4, label: "Assistant",  icon: "bubble.left.and.text.bubble.right"),
             ]
         ) {
             showcaseTab
             editorTab
-            exploreTab
+            AIDemoView()
             settingsTab
+            AssistantView()
         }
     }
 
@@ -1527,32 +1529,6 @@ struct ContentView: View {
                 }
             }
         }
-    }
-
-    // MARK: - Explore Tab
-
-    private var exploreTab: some View {
-        VStack(spacing: .space4) {
-            Spacer()
-            Ph.compass.regular
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 48, height: 48)
-                .foregroundStyle(Color.typographyMuted)
-            Text("Explore")
-                .font(.appTitleSmall)
-                .foregroundStyle(Color.typographyPrimary)
-            Text("This tab demonstrates AdaptiveNavShell.\nSwitch between tabs below.")
-                .font(.appBodySmall)
-                .foregroundStyle(Color.typographySecondary)
-                .multilineTextAlignment(.center)
-            Spacer()
-        }
-        .padding(.horizontal, .space4)
-        .frame(maxWidth: .infinity)
-        .background(Color.surfacesBasePrimary)
-        .navigationTitle("Explore")
-        .navigationBarTitleDisplayMode(.large)
     }
 
     // MARK: - Settings Tab
