@@ -27,6 +27,8 @@ import SwiftUI
 // Body is 16pt to match Apple Notes. Line height is controlled separately
 // via paragraph styles (24pt = 1.5× body size).
 
+/// UIFont values used inside NSAttributedString for the UITextView backend.
+/// Includes iPad scaling (1.25x) and all heading/body/code font variants.
 enum MarkdownFonts {
 
     // ── iPad Scaling ────────────────────────────────────────────────
@@ -132,6 +134,8 @@ enum MarkdownFonts {
 //   <element>       → primary color for that element
 //   <element>Muted  → de-emphasized variant
 
+/// UIColor values for NSAttributedString attributes. Every color references a
+/// `Color.*` semantic token from DesignTokens.swift, converted via `UIColor(Color.*)`.
 enum MarkdownColors {
 
     // ── Text ─────────────────────────────────────────────────────────
@@ -242,6 +246,8 @@ enum MarkdownColors {
 // Spacing, indentation, and sizing constants.
 // Controls the spatial rhythm of the rendered markdown content.
 
+/// Spacing, indentation, and sizing constants that control the spatial rhythm
+/// of rendered markdown content inside the editor.
 enum MarkdownLayout {
 
     // ── Line Height ──────────────────────────────────────────────────
@@ -322,6 +328,8 @@ enum MarkdownLayout {
 // SF Symbol names and sizes for rendered list markers.
 // MarkdownLayoutManager draws these on top of invisible markdown syntax.
 
+/// SF Symbol names and sizes for rendered list markers (bullets, checkboxes).
+/// `MarkdownLayoutManager` draws these on top of invisible markdown syntax characters.
 enum MarkdownSymbols {
 
     // ── Bullet List ──────────────────────────────────────────────────
@@ -371,6 +379,7 @@ enum MarkdownSymbols {
 // Visual tokens for the floating keyboard accessory toolbar.
 // Uses system material blur for a liquid glass appearance on iOS 26+.
 
+/// Visual tokens for the floating keyboard accessory toolbar (`MarkdownKeyboardToolbar`).
 enum MarkdownToolbarStyling {
 
     /// Toolbar total height including padding — 52pt for breathing room.
@@ -407,6 +416,9 @@ enum MarkdownToolbarStyling {
 // Controls the outer chrome: border, label, hint, placeholder, background.
 // Does NOT affect the rendered markdown content inside the UITextView.
 
+/// Wrapper chrome tokens for the `AppMarkdownEditor` SwiftUI view.
+/// Controls the outer border, label, hint, placeholder, and background.
+/// Does NOT affect the rendered markdown content inside the UITextView.
 enum NativeMarkdownEditorStyling {
 
     struct Colors {

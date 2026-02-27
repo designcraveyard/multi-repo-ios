@@ -10,6 +10,9 @@ import SwiftUI
 
 // MARK: - Toolbar Action
 
+/// All possible actions dispatched from the keyboard toolbar or selection toolbar.
+/// The coordinator in `AppMarkdownEditor` handles each action by toggling formatting,
+/// inserting block elements, or launching the image/AI flows.
 enum MarkdownToolbarAction {
     case bold
     case italic
@@ -40,6 +43,12 @@ enum MarkdownToolbarAction {
 
 // MARK: - MarkdownKeyboardToolbar
 
+/// UIKit `inputAccessoryView` for the markdown editor's text view.
+/// Renders a horizontally-scrollable row of formatting buttons over a system
+/// ultra-thin material blur, with a sticky keyboard-dismiss button on the right.
+///
+/// Buttons are grouped by function (inline formatting, headings, lists, blocks,
+/// rich elements, indentation, AI tools) with thin dividers between groups.
 class MarkdownKeyboardToolbar: UIView {
 
     // MARK: - Properties
@@ -242,6 +251,10 @@ class MarkdownKeyboardToolbar: UIView {
         }
     }
 
+    // MARK: - Button Factory
+
+    /// Creates a toolbar button with the given icon, accessibility label, and touch handlers.
+    /// Includes a press-down highlight animation and haptic feedback.
     private func createButton(spec: ButtonSpec) -> UIButton {
         let btn = UIButton(type: .system)
         let config = UIImage.SymbolConfiguration(
@@ -279,6 +292,7 @@ class MarkdownKeyboardToolbar: UIView {
         return btn
     }
 
+    /// Creates a thin vertical divider line between button groups.
     private func createDivider() -> UIView {
         let div = UIView()
         div.backgroundColor = UIColor.separator.withAlphaComponent(0.3)

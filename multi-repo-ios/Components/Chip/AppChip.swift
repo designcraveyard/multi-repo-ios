@@ -49,6 +49,18 @@ private extension AppChipSize {
 
 // MARK: - AppChip
 
+/// A tappable pill chip matching the Figma "Chips" component (node 76:460).
+///
+/// Three visual variants:
+/// - `chipTabs` -- borderless pill with low-contrast background; active state adds an active border ring.
+/// - `filters` -- bordered pill on base-primary background; active state swaps to active border.
+/// - `segmentControl` -- transparent by default, elevated white/grey background when active; intended
+///   for use inside `AppSegmentControlBar`.
+///
+/// Supports three sizes (sm/md/lg), optional leading/trailing icons, and a disabled state (0.5 opacity).
+/// Haptic feedback (light impact) fires on every tap. Press state is tracked via a zero-distance `DragGesture`.
+///
+/// **Key properties:** `label`, `variant`, `size`, `isActive`, `leadingIcon`, `trailingIcon`, `isDisabled`
 public struct AppChip: View {
 
     let label: String
@@ -129,10 +141,13 @@ public struct AppChip: View {
 
     // MARK: - Colors
 
+    /// Label and icon color: primary when active, secondary when inactive.
     private var labelColor: Color {
         isActive ? .typographyPrimary : .typographySecondary
     }
 
+    /// Background color resolves based on variant, active state, and press state.
+    /// Press state always takes priority, providing immediate visual feedback.
     private var backgroundColor: Color {
         if isPressed {
             switch variant {
@@ -147,16 +162,20 @@ public struct AppChip: View {
 
         switch variant {
         case .chipTabs:
+            // Active chipTabs use the pressed surface to appear visually "depressed"
             return isActive ? .surfacesBaseLowContrastPressed : .surfacesBaseLowContrast
         case .filters:
             return .surfacesBasePrimary
         case .segmentControl:
+            // SegmentControl: active gets an elevated card surface; inactive is transparent
             return isActive ? .surfacesBasePrimary : .clear
         }
     }
 
     // MARK: - Shapes
 
+    /// Background shape varies by variant: Capsule for chipTabs/filters, RoundedRectangle
+    /// for segmentControl. The active segment gets a subtle drop shadow for elevation.
     @ViewBuilder
     private var backgroundShape: some View {
         switch variant {
@@ -202,6 +221,8 @@ public struct AppChip: View {
 
 // MARK: - AnyShape helper (iOS 16 backport)
 
+/// Type-erased Shape wrapper to allow runtime switching between Capsule and RoundedRectangle
+/// in `hitTestShape`. This is the pre-iOS 17 equivalent of the built-in `AnyShape`.
 private struct AnyShape: Shape {
     private let _path: (CGRect) -> Path
     init<S: Shape>(_ shape: S) { _path = { rect in shape.path(in: rect) } }

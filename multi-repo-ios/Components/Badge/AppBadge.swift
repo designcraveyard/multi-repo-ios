@@ -64,6 +64,16 @@ private extension AppBadgeType {
 
 // MARK: - AppBadge
 
+/// A small status indicator matching the Figma "Badge" component (node 87:1071).
+///
+/// Supports 4 semantic types (brand, success, error, accent) in solid or subtle
+/// appearance, across 4 sizes (tiny dot, small, number, medium).
+///
+/// - `tiny` renders a 4pt dot with no label (useful for notification indicators).
+/// - `number` is sized like `sm` but intended for numeric counts.
+/// - Disabled state uses container-level 0.5 opacity (no separate tokens).
+///
+/// **Key properties:** `label`, `size`, `type`, `subtle`
 public struct AppBadge: View {
 
     let size: AppBadgeSize
@@ -98,8 +108,11 @@ public struct AppBadge: View {
 
     private var spec: BadgeColorSpec { type.spec(subtle: subtle) }
 
+    // MARK: - Body
+
     public var body: some View {
         if size == .tiny {
+            // Tiny renders as a plain dot with no text — hidden from VoiceOver
             Circle()
                 .fill(spec.background)
                 .frame(width: 4, height: 4)

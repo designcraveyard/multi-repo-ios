@@ -9,7 +9,8 @@ import Combine
 
 // MARK: - TableEditorSession
 
-/// Identifiable wrapper passed to .fullScreenCover(item:).
+/// Identifiable wrapper passed to `.fullScreenCover(item:)` to present the table editor.
+/// Contains a working copy of the model so edits are non-destructive until the user taps Done.
 struct TableEditorSession: Identifiable {
     let id = UUID()
     /// Working copy — edits here don't touch the storage until Done.
@@ -22,6 +23,10 @@ struct TableEditorSession: Identifiable {
 
 // MARK: - MarkdownTableEditorView
 
+/// Full-screen sheet for editing a markdown table. Contains a scrollable
+/// `UICollectionView` grid (via `MarkdownTableEditorGrid`) with editable text fields
+/// per cell, and a floating `MarkdownTableActionBar` for structural operations.
+/// Changes are written back to the markdown storage ONLY when the user taps Done.
 struct MarkdownTableEditorView: View {
 
     // MARK: - Inputs
@@ -80,6 +85,10 @@ struct MarkdownTableEditorView: View {
 
 // MARK: - MarkdownTableEditorGrid (UIViewRepresentable)
 
+/// Bridges a `UICollectionView` grid into SwiftUI for the table editor.
+/// Uses `UICollectionViewCompositionalLayout` with equal-width columns that
+/// expand beyond the viewport when the minimum column width (120pt) is exceeded,
+/// enabling horizontal scrolling for wide tables.
 struct MarkdownTableEditorGrid: UIViewRepresentable {
 
     @ObservedObject var model: MarkdownTableModel
@@ -286,6 +295,9 @@ struct MarkdownTableEditorGrid: UIViewRepresentable {
 
 // MARK: - EditorCellView
 
+/// Individual collection view cell containing an editable `UITextField`.
+/// Reports text changes, Return key presses, and Tab key presses back to the
+/// coordinator for model updates and focus navigation.
 private class EditorCellView: UICollectionViewCell, UITextFieldDelegate {
 
     static let reuseID = "EditorCellView"

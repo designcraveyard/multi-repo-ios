@@ -47,6 +47,19 @@ private extension AppThumbnailSize {
 
 // MARK: - AppThumbnail
 
+/// An avatar/thumbnail image matching the Figma "Thumbnail" component (node 82:1235).
+///
+/// Supports 6 sizes (xs=32pt through xxl=96pt) in square (rounded-rect) or circular shape.
+/// Image sources (in priority order):
+/// 1. `image` -- a local SwiftUI `Image` passed directly.
+/// 2. `url` -- a remote URL loaded asynchronously via `URLSession`.
+/// 3. `fallback` -- a custom `@ViewBuilder` slot (e.g. initials text).
+/// 4. Built-in silhouette placeholder (system "person.fill" icon on a low-contrast surface).
+///
+/// The generic `FallbackContent` parameter allows type-safe custom fallback views.
+/// A convenience initializer where `FallbackContent == EmptyView` omits the fallback slot.
+///
+/// **Key properties:** `url`, `image`, `size`, `rounded`, `accessibilityLabel`
 public struct AppThumbnail<FallbackContent: View>: View {
 
     let url: URL?
@@ -60,7 +73,7 @@ public struct AppThumbnail<FallbackContent: View>: View {
     @State private var loadedImage: UIImage? = nil
     @State private var loadFailed: Bool = false
 
-    // ── Initialisers ──────────────────────────────────────────────────────────
+    // MARK: - Properties
 
     public init(
         url: URL? = nil,
@@ -78,7 +91,7 @@ public struct AppThumbnail<FallbackContent: View>: View {
         self.fallback = fallback
     }
 
-    // ── Body ─────────────────────────────────────────────────────────────────
+    // MARK: - Body
 
     public var body: some View {
         let pts = size.points
@@ -106,8 +119,10 @@ public struct AppThumbnail<FallbackContent: View>: View {
         }
     }
 
-    // ── Fallback view ─────────────────────────────────────────────────────────
+    // MARK: - Subviews
 
+    /// Resolves the fallback content: if the caller provided no fallback slot (EmptyView),
+    /// show the built-in silhouette placeholder; otherwise render the custom fallback.
     @ViewBuilder
     private var fallbackView: some View {
         if FallbackContent.self == EmptyView.self {
@@ -137,8 +152,10 @@ public struct AppThumbnail<FallbackContent: View>: View {
             .foregroundStyle(Color.typographyMuted)
     }
 
-    // ── Shape helper ──────────────────────────────────────────────────────────
+    // MARK: - Helpers
 
+    /// Returns Circle when `rounded` is true; otherwise a RoundedRectangle using the
+    /// `radiusSM` token. Wrapped in AnyShape for type-erasure.
     private var clipShapeForRounded: AnyShape {
         if rounded {
             AnyShape(Circle())
@@ -147,8 +164,8 @@ public struct AppThumbnail<FallbackContent: View>: View {
         }
     }
 
-    // ── Async image loader ────────────────────────────────────────────────────
-
+    /// Loads a remote image via URLSession. Guards against re-fetching if already
+    /// loaded or previously failed. Dispatches UIImage result back to MainActor.
     private func loadRemoteImage() async {
         guard let url, loadedImage == nil, !loadFailed else { return }
         do {

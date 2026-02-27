@@ -58,6 +58,17 @@ private extension AppTabSize {
 
 // MARK: - AppTabs
 
+/// A horizontal tab bar with a sliding underline indicator, matching the Figma "Tabs"
+/// component (node 76:660 tab item + node 78:284 bar).
+///
+/// Each tab consists of an optional icon + label. The active tab is identified by
+/// `activeTab` (a `String` binding matching `AppTabItem.id`). Switching tabs triggers
+/// a `matchedGeometryEffect` animation on the indicator bar and a light haptic.
+///
+/// Three sizes (sm/md/lg) control padding, font, icon size, and indicator height.
+/// A full-width 1pt bottom border sits behind the sliding indicator for visual grounding.
+///
+/// **Key properties:** `items: [AppTabItem]`, `activeTab` (binding), `size`
 public struct AppTabs: View {
 
     let items: [AppTabItem]

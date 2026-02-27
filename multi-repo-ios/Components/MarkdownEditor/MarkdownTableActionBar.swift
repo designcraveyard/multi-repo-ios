@@ -6,11 +6,15 @@ import SwiftUI
 
 // MARK: - MarkdownTableActionBar
 
+/// Floating capsule-shaped action bar shown at the bottom of the table editor sheet.
+/// Provides structural operations: add/delete rows and columns, column text alignment
+/// (left/center/right), header row/column toggles, and a keyboard dismiss button.
 struct MarkdownTableActionBar: View {
 
-    // MARK: - Inputs
+    // MARK: - Properties
 
     @ObservedObject var model: MarkdownTableModel
+    /// The column index that currently has keyboard focus (used for alignment targeting).
     var focusedColumn: Int?
     var onDismissKeyboard: (() -> Void)?
 

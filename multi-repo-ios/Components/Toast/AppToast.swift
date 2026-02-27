@@ -102,6 +102,21 @@ private func specForVariant(_ variant: AppToastVariant) -> ToastSpec {
 
 // MARK: - AppToast
 
+/// A notification toast matching the Figma "Toast Message" component (node 108:4229).
+///
+/// Four semantic variants (default/success/warning/error) each render with an inverse
+/// (dark-on-light / light-on-dark) background, a variant-specific status icon, and
+/// themed text colors. The toast is a full-width capsule containing:
+///   `[status icon] [message + optional description] [Spacer] [action pill?] [trailing icon?] [dismiss X?]`
+///
+/// All interactive elements (action pill, trailing icon button, dismiss button) fire
+/// light haptic feedback on tap.
+///
+/// Use the `.toastOverlay(isPresented:duration:content:)` modifier to present a toast
+/// anchored to the bottom of any view with slide+fade animation and auto-dismiss.
+///
+/// **Key properties:** `message`, `variant`, `description`, `actionLabel`, `onAction`,
+/// `trailingIconButton`, `dismissible`, `onDismiss`
 public struct AppToast: View {
 
     let message: String
@@ -112,6 +127,8 @@ public struct AppToast: View {
     let trailingIconButton: ToastTrailingIconButton?
     let dismissible: Bool
     let onDismiss: (() -> Void)?
+
+    // MARK: - Properties
 
     public init(
         message: String,
@@ -132,6 +149,8 @@ public struct AppToast: View {
         self.dismissible = dismissible
         self.onDismiss = onDismiss
     }
+
+    // MARK: - Body
 
     public var body: some View {
         let spec = specForVariant(variant)
@@ -218,6 +237,8 @@ public struct AppToast: View {
 
 // MARK: - Toast Overlay Modifier
 
+/// ViewModifier that presents a toast at the bottom of the screen with spring animation.
+/// Auto-dismisses after `duration` seconds (default 3s); set duration to 0 to disable.
 public struct ToastOverlay<ToastContent: View>: ViewModifier {
     @Binding var isPresented: Bool
     let duration: TimeInterval

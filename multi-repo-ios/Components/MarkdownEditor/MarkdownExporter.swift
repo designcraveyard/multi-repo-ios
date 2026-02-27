@@ -5,6 +5,8 @@
 
 import UIKit
 
+/// Utility that writes the raw markdown string from a `MarkdownTextStorage`
+/// to a temporary `.md` file suitable for UIActivityViewController sharing.
 struct MarkdownExporter {
 
     /// Export editor content as a temporary .md file URL.

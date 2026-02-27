@@ -11,8 +11,17 @@ import SwiftUI
 
 // MARK: - AppSwitch
 
-/// Toggle switch for binary on/off settings.
-/// Wraps SwiftUI's native Toggle to get the iOS 26 Liquid Glass thumb style.
+/// A toggle switch for binary on/off settings.
+///
+/// Wraps SwiftUI's native `Toggle` to inherit the iOS 26 Liquid Glass thumb style,
+/// system-provided tap/drag gestures, and built-in accessibility. When a `label` is
+/// provided, it renders as a labeled toggle row; otherwise the label is hidden.
+///
+/// State is externally owned via `checked` + `onChange` (not a `Binding<Bool>`) to
+/// match the callback pattern used by other form controls in this design system.
+/// Haptic feedback (light) fires on each toggle. Disabled state uses 0.5 opacity.
+///
+/// **Key properties:** `checked`, `label`, `disabled`, `onChange`
 public struct AppSwitch: View {
 
     // MARK: - Properties
@@ -56,6 +65,8 @@ public struct AppSwitch: View {
 
     // MARK: - Helpers
 
+    /// Bridges the `checked` + `onChange` callback pattern to a `Binding<Bool>` that
+    /// SwiftUI's Toggle requires. The setter fires onChange and haptic feedback.
     private var toggleBinding: Binding<Bool> {
         Binding(
             get: { checked },

@@ -117,6 +117,20 @@ private let INPUT_V_PADDING: CGFloat = 14
 
 // MARK: - AppInputField (single line)
 
+/// A single-line text input matching the Figma "Input Field" component (node 90:3753).
+///
+/// Supports 4 validation states (default, success, warning, error) that control border
+/// color, hint text color, and an auto-inserted trailing state icon. The field has 7
+/// optional slots arranged left-to-right:
+///   `[leadingLabel] [leadingPicker] [leadingSeparator] [leadingIcon] [TextField]
+///    [trailingIcon|stateIcon] [trailingSeparator] [trailingPicker] [trailingLabel]`
+///
+/// Picker slots accept `InputPickerConfig` (type-erased embedded `AppNativePicker`)
+/// so callers do not need AnyView wrapping. Focus triggers a light haptic and an
+/// animated border transition.
+///
+/// **Key properties:** `text` (binding), `label`, `placeholder`, `state`, `hint`,
+/// `leadingIcon`, `trailingIcon`, `leadingPicker`, `trailingPicker`, `isDisabled`
 public struct AppInputField: View {
 
     // MARK: - Properties
@@ -291,6 +305,14 @@ public struct AppInputField: View {
 
 // MARK: - AppTextField (multiline)
 
+/// A multiline text area matching the Figma "Input Field / TextField" variant.
+///
+/// Renders a `TextEditor` with the same validation states and chrome as `AppInputField`
+/// (label above, border that animates on focus, hint text below). The built-in TextEditor
+/// inset is compensated by reducing horizontal padding by 4pt.
+///
+/// **Key properties:** `text` (binding), `label`, `placeholder`, `state`, `hint`,
+/// `minLines`, `isDisabled`
 public struct AppTextField: View {
 
     @Binding var text: String

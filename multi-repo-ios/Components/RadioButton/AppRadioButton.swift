@@ -35,7 +35,18 @@ extension EnvironmentValues {
 
 // MARK: - AppRadioButton
 
-/// Standalone radio button with optional label. Use inside AppRadioGroup for managed single-selection.
+/// A circular radio button with optional label for single-selection scenarios.
+///
+/// Can be used standalone (with `checked` + `onChange`) or inside an `AppRadioGroup`
+/// (with `value` matching the group's bound `String`). When inside a group, the
+/// `checked` and `onChange` props are ignored in favor of the environment-injected
+/// group binding.
+///
+/// The radio indicator is a 20pt circle: unchecked shows a default border; checked
+/// fills with the brand interactive color and renders an 8pt white inner dot.
+/// Disabled state uses 0.5 opacity. Haptic feedback (light) fires on tap.
+///
+/// **Key properties:** `checked`, `label`, `value`, `disabled`, `onChange`
 public struct AppRadioButton: View {
 
     // MARK: - Properties
@@ -65,6 +76,8 @@ public struct AppRadioButton: View {
 
     // MARK: - Computed
 
+    /// Resolves checked state: prefers group-managed value when inside AppRadioGroup,
+    /// falls back to the standalone `checked` prop otherwise.
     private var isChecked: Bool {
         if let groupValue, let value {
             return groupValue.wrappedValue == value
@@ -96,6 +109,8 @@ public struct AppRadioButton: View {
 
     // MARK: - Subviews
 
+    /// The 20pt radio indicator circle. When checked, the outer circle fills with
+    /// brand-interactive color and an 8pt white dot appears in the center.
     private var radioCircle: some View {
         ZStack {
             Circle()
@@ -109,6 +124,7 @@ public struct AppRadioButton: View {
                 )
 
             if isChecked {
+                // Inner dot rendered on top of the filled circle
                 Circle()
                     .fill(Color.typographyOnBrandPrimary)
                     .frame(width: 8, height: 8)
@@ -119,6 +135,8 @@ public struct AppRadioButton: View {
 
     // MARK: - Helpers
 
+    /// Handles tap: updates group binding if inside a group, otherwise calls onChange.
+    /// Always fires light haptic feedback.
     private func handleTap() {
         if let groupValue, let value {
             groupValue.wrappedValue = value
@@ -131,7 +149,13 @@ public struct AppRadioButton: View {
 
 // MARK: - AppRadioGroup
 
-/// Manages single-selection state across a group of AppRadioButton children.
+/// Manages single-selection state across a group of `AppRadioButton` children.
+///
+/// Injects the shared `value` binding and `disabled` flag into the environment so that
+/// child radio buttons automatically derive their checked state and update the group
+/// selection on tap. Renders children in a vertical `VStack` with `space3` spacing.
+///
+/// **Key properties:** `value` (binding), `disabled`
 public struct AppRadioGroup<Content: View>: View {
 
     @Binding var value: String

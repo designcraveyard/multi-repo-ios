@@ -35,6 +35,19 @@ public struct AppStepperStep {
 
 // MARK: - AppStepper
 
+/// A vertical timeline of steps, matching the Figma "TimelineStepper" component
+/// (node 108:4357).
+///
+/// Each step is composed of:
+/// - An `AppStepIndicator` dot (completed/incomplete).
+/// - A 2pt vertical connector line to the next step (omitted for the last step).
+/// - An `AppTextBlock` with title, optional subtitle, and optional body text.
+///
+/// This is a display-only pattern -- there are no interactive elements or tap handlers.
+/// Steps are rendered in a `VStack` with no spacing, and each row uses an `HStack`
+/// aligning the left track column (indicator + line) with the right text content.
+///
+/// **Key properties:** `steps: [AppStepperStep]`
 public struct AppStepper: View {
 
     // MARK: - Properties
@@ -73,6 +86,8 @@ public struct AppStepper: View {
         }
     }
 
+    /// Left-side column: the step indicator dot at top, followed by a 2pt vertical
+    /// connector line that stretches to fill the remaining height (omitted for the last step).
     private func trackColumn(completed: Bool, isLast: Bool) -> some View {
         VStack(spacing: .space2) {
             AppStepIndicator(completed: completed)

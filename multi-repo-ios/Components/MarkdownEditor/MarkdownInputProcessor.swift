@@ -8,6 +8,12 @@ import UIKit
 
 // MARK: - MarkdownInputProcessor
 
+/// Intercepts keystrokes in the UITextView delegate and transforms them into
+/// markdown-aware behaviour. Handles:
+/// - **Enter** inside lists: auto-continues bullets/numbers/tasks or exits on empty item
+/// - **Tab** in normal text: indents/outdents the current line by 2 spaces
+/// - **Tab** inside table rows: navigates between cells (forward/backward)
+/// - **Enter** inside blockquotes: continues the `>` prefix or exits on empty line
 struct MarkdownInputProcessor {
 
     // MARK: - Process Input

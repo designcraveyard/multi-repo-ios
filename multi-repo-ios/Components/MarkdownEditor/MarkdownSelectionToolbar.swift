@@ -7,6 +7,12 @@ import SwiftUI
 
 // MARK: - MarkdownSelectionToolbar
 
+/// Floating dark-background toolbar that appears above the text selection.
+/// Provides quick access to inline formatting (bold, italic, underline, strikethrough,
+/// highlight, code, link) and heading levels (H1-H3).
+///
+/// Positioned programmatically via `show(above:in:)` and dismissed via `dismiss()`.
+/// Uses an inverted color scheme: dark background with light icon tints.
 class MarkdownSelectionToolbar: UIView {
 
     // MARK: - Properties

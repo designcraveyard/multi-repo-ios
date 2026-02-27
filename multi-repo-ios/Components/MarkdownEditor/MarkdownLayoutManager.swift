@@ -10,12 +10,22 @@ import UIKit
 
 // MARK: - MarkdownLayoutManager
 
+/// Custom `NSLayoutManager` that draws visual replacements for invisible markdown
+/// syntax characters. Works in tandem with `MarkdownTextStorage`, which collapses
+/// bullet/checkbox/number markers to zero-width invisible text. This layout manager
+/// then draws SF Symbol bullets, checkbox icons, ordered-list numbers, blockquote
+/// left bars, horizontal rules, highlight backgrounds, and code block containers
+/// at the correct glyph positions.
 class MarkdownLayoutManager: NSLayoutManager {
+
+    // MARK: - Properties
 
     weak var markdownStorage: MarkdownTextStorage?
 
     // MARK: - Glyph Drawing
 
+    /// Main entry point: draws highlight/code backgrounds first, then calls `super`
+    /// for normal text, then overlays bullet dots, checkboxes, numbers, and rules.
     override func drawGlyphs(forGlyphRange glyphsToShow: NSRange, at origin: CGPoint) {
         // Draw highlight backgrounds BEFORE text so text renders on top
         drawHighlightBackgrounds(forGlyphRange: glyphsToShow, at: origin)

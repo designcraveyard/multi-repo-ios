@@ -7,7 +7,17 @@ import UIKit
 
 // MARK: - MarkdownImageViewer
 
+/// Full-screen image viewer presented when tapping an inline image in the editor.
+///
+/// Supports:
+/// - Pinch-to-zoom (1x to 5x) via `MagnifyGesture`
+/// - Double-tap to toggle between 1x and 3x zoom
+/// - Vertical swipe-to-dismiss (when at 1x zoom)
+/// - Crop button that opens `MarkdownImageCropView` as a sheet
 struct MarkdownImageViewer: View {
+
+    // MARK: - Properties
+
     let imageEntry: ImageEntry
     var imageStore: MarkdownImageStore?
     var onCropComplete: ((UIImage) -> Void)?
@@ -88,6 +98,7 @@ struct MarkdownImageViewer: View {
 
     // MARK: - Gestures
 
+    /// Pinch-to-zoom gesture clamped between 1x and 5x. Snaps back to 1x if close.
     private var zoomGesture: some Gesture {
         MagnifyGesture()
             .onChanged { value in
@@ -107,11 +118,16 @@ struct MarkdownImageViewer: View {
             }
     }
 
+    // MARK: - Helpers
+
+    /// Background dims as the user drags further from center (up to 50% fade at 300pt).
     private var backgroundOpacity: Double {
         let progress = min(abs(dragOffset.height) / 300, 1.0)
         return 1.0 - progress * 0.5
     }
 
+    /// Vertical drag gesture that dismisses the viewer when displacement exceeds 150pt.
+    /// Disabled when zoomed in (zoomScale > 1.05) to avoid conflicting with pan-to-scroll.
     private var dragToDissmissGesture: some Gesture {
         DragGesture()
             .onChanged { value in

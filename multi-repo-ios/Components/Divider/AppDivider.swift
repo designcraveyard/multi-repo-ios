@@ -28,6 +28,16 @@ public enum AppDividerOrientation {
 
 // MARK: - AppDivider
 
+/// A visual separator matching the Figma "Divider" component (node 95:2092).
+///
+/// Two types:
+/// - `row` (default) -- subtle 1pt line using `borderMuted`; for separating list rows.
+/// - `section` -- bolder 8pt bar using `borderDefault`; for separating page sections.
+///
+/// Supports horizontal (default) and vertical orientations. Horizontal section dividers
+/// can include a centered text label (e.g. "or") flanked by lines on both sides.
+///
+/// **Key properties:** `type`, `orientation`, `label`
 public struct AppDivider: View {
 
     let type: AppDividerType
@@ -52,6 +62,8 @@ public struct AppDivider: View {
         type == .section ? 8 : 1
     }
 
+    // MARK: - Body
+
     public var body: some View {
         switch orientation {
         case .vertical:
@@ -72,6 +84,9 @@ public struct AppDivider: View {
         }
     }
 
+    // MARK: - Subviews
+
+    /// Renders a horizontal line-label-line layout for labeled section dividers (e.g. "or").
     @ViewBuilder
     private func labeledDivider(label: String) -> some View {
         HStack(spacing: CGFloat.space3) {

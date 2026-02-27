@@ -78,6 +78,25 @@ public enum AppListItemTrailing {
 
 // MARK: - AppListItem
 
+/// A horizontal list row matching the Figma "ListItem" composed pattern.
+///
+/// Layout: `[optional Thumbnail] [TextBlock: title + subtitle + body + metadata] [optional trailing slot]`
+/// followed by an optional `AppDivider` below.
+///
+/// The trailing slot (`AppListItemTrailing`) supports 6 variants:
+/// - `.button` -- an `AppButton` (e.g. "Edit")
+/// - `.iconButton` -- an `AppIconButton` (e.g. more-options dots)
+/// - `.badge` -- an `AppBadge` (e.g. "New")
+/// - `.radio` -- an `AppRadioButton` (row tap selects)
+/// - `.checkbox` -- an `AppCheckbox` (row tap toggles)
+/// - `.toggle` -- an `AppSwitch` (row tap toggles)
+///
+/// For selection-type trailing slots (radio/checkbox/toggle), tapping the entire row
+/// triggers the selection action with haptic feedback. The title font weight steps up
+/// from regular to medium-emphasis when the selection control is active.
+///
+/// **Key properties:** `title`, `subtitle`, `bodyText`, `metadata`, `thumbnail`,
+/// `trailing`, `divider`
 public struct AppListItem: View {
 
     // MARK: - Properties
@@ -132,6 +151,8 @@ public struct AppListItem: View {
         .padding(.vertical, .space3)
     }
 
+    /// Whole-row tap handler: only fires for selection-type trailing slots (radio/checkbox/toggle).
+    /// For radio, only unchecked rows respond (radio cannot be deselected by re-tapping).
     private func handleRowTap() {
         guard let trailing else { return }
         switch trailing {
@@ -182,9 +203,10 @@ public struct AppListItem: View {
         }
     }
 
+    /// Text column: title is required, subtitle/body/metadata are optional.
+    /// Title font weight is conditional -- medium-emphasis when the trailing selection
+    /// control is active, regular when inactive.
     private var textContent: some View {
-        // Title font steps up to appBodyLargeEm (medium weight) when the trailing
-        // selection control is active; falls back to appBodyLarge (regular) when off.
         VStack(alignment: .leading, spacing: .space1) {
             Text(title)
                 .font(isTrailingSelected ? .appBodyLargeEm : .appBodyLarge)
@@ -208,6 +230,7 @@ public struct AppListItem: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    /// Renders the appropriate trailing component based on the `AppListItemTrailing` enum case.
     @ViewBuilder
     private var trailingSlot: some View {
         if let trailing {

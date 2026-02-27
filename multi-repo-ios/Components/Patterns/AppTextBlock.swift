@@ -12,6 +12,19 @@ import SwiftUI
 
 // MARK: - AppTextBlock
 
+/// A vertical typography stack matching the Figma "TextBlock" component (node 84:789).
+///
+/// Renders up to 5 optional text slots in a consistent typographic hierarchy:
+/// 1. **overline** -- uppercased, tracked, muted caption (`appOverlineSmall`).
+/// 2. **title** -- primary emphasis text (`appBodyLargeEm`).
+/// 3. **subtext** -- secondary line below title, muted (`appBodySmall`).
+/// 4. **body** -- main body copy, secondary color (`appBodyMedium`).
+/// 5. **metadata** -- footnote-level caption, muted (`appCaptionSmall`).
+///
+/// The header group (overline + title + subtext) uses tighter `space1` vertical spacing,
+/// while the overall block uses `space2` between the header, body, and metadata sections.
+///
+/// **Key properties:** `overline`, `title`, `subtext`, `bodyText` (init param: `body`), `metadata`
 public struct AppTextBlock: View {
 
     // MARK: - Properties

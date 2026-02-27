@@ -7,12 +7,19 @@ import Combine
 
 // MARK: - ColumnAlignment
 
+/// Text alignment for a table column. Serialized to GFM alignment markers
+/// in the separator row (`:---`, `:---:`, `---:`).
 enum ColumnAlignment: Equatable {
     case left, center, right
 }
 
 // MARK: - MarkdownTableModel
 
+/// Observable data model for a GFM-style markdown table.
+///
+/// Supports row/column mutations (add, delete, move, reorder), per-column alignment,
+/// optional header row and header column styling, deep copying for non-destructive
+/// sheet editing, and round-trip markdown serialization (`toMarkdown()` / `fromMarkdown()`).
 class MarkdownTableModel: ObservableObject {
 
     // MARK: - Properties

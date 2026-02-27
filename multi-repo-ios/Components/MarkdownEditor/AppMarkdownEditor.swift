@@ -23,6 +23,16 @@ final class TableCommitRelay {
 
 // MARK: - AppMarkdownEditor
 
+/// A real-time inline WYSIWYG markdown editor for SwiftUI.
+///
+/// Renders markdown syntax (headings, lists, bold, italic, code, tables, images)
+/// as formatted content in-place using a `UITextView` + `NSAttributedString` backend.
+/// Two display modes: `showChrome: true` wraps the editor with label, border, and hint
+/// (form field style); `showChrome: false` renders the bare editor full-bleed (Apple Notes style).
+///
+/// Complex component composed of: `MarkdownTextStorage`, `MarkdownLayoutManager`,
+/// `MarkdownInputProcessor`, `MarkdownKeyboardToolbar`, `MarkdownSelectionToolbar`,
+/// `MarkdownImageAttachment`, `MarkdownTableCardView`, and `MarkdownTableEditorView`.
 public struct AppMarkdownEditor: View {
 
     // MARK: - Properties

@@ -43,6 +43,14 @@ enum MarkdownBlockType: Equatable {
 
 // MARK: - MarkdownTextStorage
 
+/// Custom `NSTextStorage` that applies live inline markdown formatting as the user types.
+///
+/// On every edit (`processEditing`), the full text is re-classified line-by-line into
+/// `MarkdownBlockType` cases (heading, bullet, task, code fence, table row, etc.).
+/// Block-level styles (fonts, paragraph indents, hidden syntax markers) and inline
+/// styles (bold, italic, strikethrough, highlight, links) are then applied as
+/// NSAttributedString attributes. Syntax characters are collapsed to near-zero width
+/// so they remain in the backing string (for round-trip export) but are visually hidden.
 class MarkdownTextStorage: NSTextStorage {
 
     // --- Constants ---
@@ -565,6 +573,9 @@ class MarkdownTextStorage: NSTextStorage {
 
     // MARK: - Inline Formatting
 
+    /// Applies character-level formatting (bold, italic, underline, strikethrough,
+    /// highlight, inline code, links) by matching regex patterns and hiding the
+    /// surrounding syntax markers. Skips code blocks and table rows.
     private func applyInlineFormatting() {
         let text = backing.string
         let nsText = text as NSString
@@ -665,6 +676,8 @@ class MarkdownTextStorage: NSTextStorage {
         }
     }
 
+    /// Generic helper: matches a regex pattern, hides the opening/closing marker characters
+    /// (collapsed to near-zero width), and calls the `apply` closure on the content range.
     private func applyInlineHidden(nsText: NSString, pattern: String, markerLen: Int, isInCodeBlock: (NSRange) -> Bool, apply: (NSRange) -> Void) {
         guard let regex = try? NSRegularExpression(pattern: pattern) else { return }
         let matches = regex.matches(in: nsText as String, range: NSRange(location: 0, length: nsText.length))

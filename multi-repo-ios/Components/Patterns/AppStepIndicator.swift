@@ -14,6 +14,17 @@ import SwiftUI
 
 // MARK: - AppStepIndicator
 
+/// A 12pt circular dot representing a single timeline step, matching the Figma
+/// "StepIndicator" component (node 108:9891).
+///
+/// Two visual states:
+/// - Incomplete (`completed: false`) -- hollow circle with a `borderDefault` stroke.
+/// - Completed (`completed: true`) -- solid `surfacesSuccessSolid` circle with a
+///   white Phosphor checkmark icon (xs/bold).
+///
+/// Accessibility labels are set automatically ("Step completed" / "Step incomplete").
+///
+/// **Key properties:** `completed`
 public struct AppStepIndicator: View {
 
     // MARK: - Properties

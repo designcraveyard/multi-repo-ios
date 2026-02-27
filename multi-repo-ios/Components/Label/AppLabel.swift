@@ -28,6 +28,20 @@ public enum AppLabelType {
 
 // MARK: - AppLabel
 
+/// An inline text label with optional leading/trailing icons, matching the
+/// Figma "Label" component (node 82:1401).
+///
+/// Three sizes (sm/md/lg) control font weight, icon sizing, and inter-element spacing.
+/// Four semantic types set the text/icon color:
+/// - `secondaryAction` -- secondary typography (default)
+/// - `primaryAction` -- primary typography
+/// - `brandInteractive` -- brand color
+/// - `information` -- muted typography
+///
+/// Leading and trailing icons can be independently shown/hidden via `showLeadingIcon`
+/// and `showTrailingIcon` flags.
+///
+/// **Key properties:** `label`, `size`, `type`, `leadingIcon`, `trailingIcon`
 public struct AppLabel: View {
 
     let label: String
@@ -56,7 +70,7 @@ public struct AppLabel: View {
         self.showTrailingIcon = showTrailingIcon
     }
 
-    // ── Computed style properties ──────────────────────────────────────────────
+    // MARK: - Helpers
 
     private var textColor: Color {
         switch type {
@@ -90,7 +104,7 @@ public struct AppLabel: View {
         }
     }
 
-    // ── Body ──────────────────────────────────────────────────────────────────
+    // MARK: - Body
 
     public var body: some View {
         HStack(spacing: spacing) {

@@ -7,6 +7,10 @@ import SwiftUI
 
 // MARK: - MarkdownTableCardView
 
+/// Read-only UIKit table card rendered as an overlay on top of invisible pipe-syntax
+/// text in the editor. Displays a compact grid with optional header row/column styling,
+/// horizontal scrolling when columns exceed the available width, and a delete button.
+/// Tapping anywhere on the card opens the full `MarkdownTableEditorView` sheet.
 class MarkdownTableCardView: UIView {
 
     // MARK: - Callbacks
@@ -47,6 +51,7 @@ class MarkdownTableCardView: UIView {
 
     // MARK: - Setup
 
+    /// Configures the scroll view and vertical row stack for the card's grid layout.
     private func setupShell() {
         backgroundColor = bodyBG
         layer.cornerRadius = cornerRadius
@@ -80,6 +85,7 @@ class MarkdownTableCardView: UIView {
         ])
     }
 
+    /// Rebuilds row subviews from the model's cell data. Called on init and refresh.
     private func buildRows() {
         rowStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
         for (rowIdx, row) in model.cells.enumerated() {
@@ -88,6 +94,8 @@ class MarkdownTableCardView: UIView {
         }
     }
 
+    /// Creates a single row view with a horizontal stack of cells, each with a text label.
+    /// Header cells get semibold font; header columns get a tinted background.
     private func makeRowView(cells: [String], isHeaderRow: Bool, hasHeaderColumn: Bool) -> UIView {
         let container = UIView()
         container.backgroundColor = isHeaderRow ? headerBG : .clear

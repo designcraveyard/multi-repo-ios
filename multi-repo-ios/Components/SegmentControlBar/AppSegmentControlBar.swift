@@ -65,6 +65,19 @@ private extension AppSegmentBarSize {
 
 // MARK: - AppSegmentControlBar (single-select)
 
+/// A single-select segmented control matching the Figma "SegmentControlBar" component
+/// (node 81:637).
+///
+/// Three visual modes via `type`:
+/// - `segmentControl` -- full-width pill container with equal-width segments and an animated
+///   sliding thumb (`matchedGeometryEffect`). Light mode uses a white thumb; dark mode uses
+///   a subtle grey thumb for elevated appearance.
+/// - `chips` -- borderless pill chips, content-sized, low-contrast background.
+/// - `filters` -- bordered pill chips on base-primary background with active/default border.
+///
+/// All interactions trigger light haptic feedback.
+///
+/// **Key properties:** `items: [AppSegmentItem]`, `selected` (binding), `type`, `size`
 public struct AppSegmentControlBar: View {
 
     let items: [AppSegmentItem]
@@ -200,6 +213,13 @@ public struct AppSegmentControlBar: View {
 
 // MARK: - AppSegmentControlBarMulti (multi-select, Filters)
 
+/// A multi-select variant of the segment control bar, rendering bordered filter pills.
+///
+/// Tapping a pill toggles its membership in the `selected` set. Uses the same size tokens
+/// and border styling as `AppSegmentControlBar` with `type: .filters`, but binds to
+/// `Set<String>` instead of a single `String`.
+///
+/// **Key properties:** `items: [AppSegmentItem]`, `selected: Set<String>` (binding), `size`
 public struct AppSegmentControlBarMulti: View {
 
     let items: [AppSegmentItem]

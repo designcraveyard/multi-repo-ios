@@ -5,7 +5,19 @@ import SwiftUI
 
 // MARK: - MarkdownImageCropView
 
+/// Full-screen image crop view presented modally from the image viewer.
+/// Provides a draggable crop rectangle with corner/edge handles, a rule-of-thirds
+/// grid overlay, and aspect ratio presets (Free, 1:1, 4:3, 16:9).
+///
+/// Composed of several private helper views:
+/// - `CropDimmingOverlay` -- dims areas outside the crop rect
+/// - `GridOverlay` -- draws rule-of-thirds guidelines
+/// - `CropHandleVisuals` -- renders L-shaped corner brackets and edge bars
+/// - `CropGestureOverlay` -- single DragGesture that routes to the nearest handle or center
 struct MarkdownImageCropView: View {
+
+    // MARK: - Properties
+
     let image: UIImage
     let onCrop: (UIImage) -> Void
     let onCancel: () -> Void
@@ -172,9 +184,11 @@ struct MarkdownImageCropView: View {
         return r
     }
 
+    /// Maps the on-screen crop rect back to pixel coordinates and produces the cropped UIImage.
     private func performCrop() {
         guard let cgImage = image.cgImage else { return }
 
+        // Convert screen-space crop rect to pixel-space using the display-to-actual scale factors
         let scaleX = CGFloat(cgImage.width) / imageRect.width
         let scaleY = CGFloat(cgImage.height) / imageRect.height
 
@@ -219,6 +233,8 @@ enum AspectRatio: String, CaseIterable, Identifiable {
 
 // MARK: - CropDimmingOverlay
 
+/// Draws a semi-transparent black overlay over the entire container, with the crop
+/// rectangle punched out using even-odd fill to reveal the image underneath.
 private struct CropDimmingOverlay: View {
     let cropRect: CGRect
     let containerSize: CGSize
@@ -236,6 +252,8 @@ private struct CropDimmingOverlay: View {
 
 // MARK: - GridOverlay
 
+/// Draws rule-of-thirds guide lines (2 vertical + 2 horizontal) and a 1px white border
+/// around the crop rectangle. Hit-testing is disabled so gestures pass through.
 private struct GridOverlay: View {
     let cropRect: CGRect
 
@@ -269,6 +287,8 @@ private struct GridOverlay: View {
 
 // MARK: - CropHandleVisuals (display only, no gestures)
 
+/// Renders branded L-shaped corner handles and short edge-center bars on the crop rectangle.
+/// This is a display-only layer; all gesture handling is in `CropGestureOverlay`.
 private struct CropHandleVisuals: View {
     let cropRect: CGRect
 

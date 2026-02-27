@@ -10,7 +10,18 @@ import SwiftUI
 
 // MARK: - AppCheckbox
 
-/// Standalone checkbox with optional label. Supports checked, unchecked, and indeterminate states.
+/// A square checkbox with optional label, supporting three visual states:
+/// unchecked (empty bordered square), checked (filled square with checkmark),
+/// and indeterminate (filled square with horizontal dash).
+///
+/// The indicator is a 20pt rounded-rectangle using `radiusXS` corner radius.
+/// When filled (checked or indeterminate), the background uses the brand-interactive
+/// color and the icon is drawn as a white `Path` stroke. The checkmark and dash
+/// are rendered with `lineCap: .round` for a polished appearance.
+///
+/// Disabled state uses 0.5 opacity. Haptic feedback (light) fires on tap.
+///
+/// **Key properties:** `checked`, `indeterminate`, `label`, `disabled`, `onChange`
 public struct AppCheckbox: View {
 
     // MARK: - Properties
@@ -37,6 +48,8 @@ public struct AppCheckbox: View {
 
     // MARK: - Computed
 
+    /// True when the box should render with a filled brand-interactive background
+    /// (either checked or indeterminate).
     private var isFilled: Bool { checked || indeterminate }
 
     // MARK: - Body
@@ -88,6 +101,8 @@ public struct AppCheckbox: View {
         .animation(.easeInOut(duration: 0.15), value: indeterminate)
     }
 
+    /// Hand-drawn checkmark path: starts bottom-left, angles down to the dip, then up to top-right.
+    /// Coordinates are relative to the 20x20 frame.
     private var checkmarkIcon: some View {
         Path { path in
             path.move(to: CGPoint(x: 5, y: 10))
@@ -98,6 +113,7 @@ public struct AppCheckbox: View {
         .frame(width: 20, height: 20)
     }
 
+    /// Horizontal dash for indeterminate state: a centered line from x=5 to x=15.
     private var dashIcon: some View {
         Path { path in
             path.move(to: CGPoint(x: 5, y: 10))
