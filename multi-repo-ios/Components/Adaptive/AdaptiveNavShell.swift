@@ -131,18 +131,31 @@ public struct AdaptiveNavShell<Content: View>: View {
 
             Spacer()
 
-            // Collapse/expand toggle
+            // Collapse/expand toggle (left-aligned to match sidebar items)
             Button {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                     isSidebarExpanded.toggle()
                 }
             } label: {
-                Image(systemName: isSidebarExpanded ? "sidebar.left" : "sidebar.right")
-                    .font(.system(size: 18))
-                    .foregroundStyle(Color.typographySecondary)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 44)
+                HStack(spacing: CGFloat.spaceSM) {
+                    Image(systemName: isSidebarExpanded ? "sidebar.left" : "sidebar.right")
+                        .font(.system(size: 18))
+                        .frame(width: 24, height: 24)
+
+                    if isSidebarExpanded {
+                        Text(isSidebarExpanded ? "Collapse" : "Expand")
+                            .font(.appBodyMedium)
+                            .lineLimit(1)
+                        Spacer()
+                    }
+                }
+                .foregroundStyle(Color.typographySecondary)
+                .padding(.horizontal, CGFloat.spaceMD)
+                .frame(height: 48)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .buttonStyle(.plain)
+            .padding(.horizontal, CGFloat.spaceXS)
             .accessibilityLabel(isSidebarExpanded ? "Collapse sidebar" : "Expand sidebar")
             .padding(.bottom, CGFloat.spaceSM)
         }

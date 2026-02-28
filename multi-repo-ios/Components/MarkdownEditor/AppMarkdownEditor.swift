@@ -440,6 +440,9 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
                 guard let self, let tv = self.textView else { return }
                 self.handleToolbarAction(action, in: tv)
             }
+            toolbar.onDismissKeyboard = { [weak textView] in
+                textView?.resignFirstResponder()
+            }
             toolbar.translatesAutoresizingMaskIntoConstraints = false
             toolbar.alpha = 0
             toolbar.layer.cornerRadius = 26
@@ -452,47 +455,77 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
 
             textView.addSubview(toolbar)
 
-            let bottomConstraint = toolbar.bottomAnchor.constraint(equalTo: textView.bottomAnchor, constant: -16)
+            // Pin to frameLayoutGuide so toolbar stays in the visible area
+            // (not the scrollable content area)
+            let bottomConstraint = toolbar.bottomAnchor.constraint(equalTo: textView.frameLayoutGuide.bottomAnchor, constant: -16)
             NSLayoutConstraint.activate([
-                toolbar.centerXAnchor.constraint(equalTo: textView.centerXAnchor),
+                toolbar.centerXAnchor.constraint(equalTo: textView.frameLayoutGuide.centerXAnchor),
                 toolbar.heightAnchor.constraint(equalToConstant: MarkdownToolbarStyling.height),
-                toolbar.widthAnchor.constraint(lessThanOrEqualTo: textView.widthAnchor, constant: -32),
+                toolbar.widthAnchor.constraint(lessThanOrEqualTo: textView.frameLayoutGuide.widthAnchor, constant: -32),
                 bottomConstraint,
             ])
 
             self.floatingToolbar = toolbar
             self.floatingToolbarBottomConstraint = bottomConstraint
 
-            // Listen for keyboard events
+            // Listen for keyboard events to adjust position above software keyboard
             NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow(_:)), name: UIResponder.keyboardWillShowNotification, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide(_:)), name: UIResponder.keyboardWillHideNotification, object: nil)
         }
 
+        /// Shows the floating toolbar (called on focus / keyboard appear).
+        func showFloatingToolbar(animated: Bool = true) {
+            guard let toolbar = floatingToolbar else { return }
+            if animated {
+                UIView.animate(withDuration: 0.25) { toolbar.alpha = 1 }
+            } else {
+                toolbar.alpha = 1
+            }
+        }
+
+        /// Hides the floating toolbar (called on blur / keyboard hide).
+        func hideFloatingToolbar(animated: Bool = true) {
+            guard let toolbar = floatingToolbar else { return }
+            if animated {
+                UIView.animate(withDuration: 0.2) { toolbar.alpha = 0 }
+            } else {
+                toolbar.alpha = 0
+            }
+        }
+
         @objc private func keyboardWillShow(_ notification: Notification) {
-            guard let toolbar = floatingToolbar,
-                  let textView = textView,
+            guard let textView = textView,
                   let userInfo = notification.userInfo,
                   let keyboardFrame = userInfo[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
                   let duration = userInfo[UIResponder.keyboardAnimationDurationUserInfoKey] as? TimeInterval else { return }
 
-            let keyboardTop = textView.bounds.height - textView.convert(keyboardFrame, from: nil).origin.y
-            let offset = max(keyboardTop + 12, 16)
+            // Adjust toolbar position above the software keyboard
+            let convertedFrame = textView.convert(keyboardFrame, from: nil)
+            let keyboardOverlap = textView.bounds.maxY - convertedFrame.origin.y
+            let offset = max(keyboardOverlap + 12, 16)
             floatingToolbarBottomConstraint?.constant = -offset
 
             UIView.animate(withDuration: duration) {
-                toolbar.alpha = 1
                 textView.layoutIfNeeded()
             }
+
+            // Also ensure toolbar is visible (redundant if already shown on focus,
+            // but handles edge cases like keyboard type changes)
+            showFloatingToolbar()
         }
 
         @objc private func keyboardWillHide(_ notification: Notification) {
-            guard let toolbar = floatingToolbar,
-                  let userInfo = notification.userInfo,
+            guard let userInfo = notification.userInfo,
                   let duration = userInfo[UIResponder.keyboardAnimationDurationUserInfoKey] as? TimeInterval else { return }
 
+            // Reset position to bottom of visible frame
+            floatingToolbarBottomConstraint?.constant = -16
+
             UIView.animate(withDuration: duration) {
-                toolbar.alpha = 0
+                self.textView?.layoutIfNeeded()
             }
+            // Don't hide toolbar here — it stays visible as long as text view is focused.
+            // It hides in textViewDidEndEditing instead.
         }
 
         // MARK: - UITextViewDelegate
@@ -545,10 +578,14 @@ struct MarkdownEditorRepresentable: UIViewRepresentable {
         func textViewDidBeginEditing(_ textView: UITextView) {
             parent.isFocused = true
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            // Show floating toolbar on iPad (works even with hardware keyboard)
+            showFloatingToolbar()
         }
 
         func textViewDidEndEditing(_ textView: UITextView) {
             parent.isFocused = false
+            // Hide floating toolbar on iPad when editor loses focus
+            hideFloatingToolbar()
         }
 
         func textViewDidChangeSelection(_ textView: UITextView) {
