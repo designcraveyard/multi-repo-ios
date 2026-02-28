@@ -9,6 +9,7 @@ struct ComponentsShowcaseView: View {
 
     // MARK: - Properties
 
+    @State private var selectedDate = Date()
     @State private var radioValue = "email"
     @State private var checkNotifications = true
     @State private var checkUpdates = false
@@ -32,6 +33,8 @@ struct ComponentsShowcaseView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: .space8) {
+                dateGridSection
+                AppDivider()
                 radioSection
                 AppDivider()
                 checkboxSection
@@ -45,6 +48,42 @@ struct ComponentsShowcaseView: View {
     }
 
     // MARK: - Subviews
+
+    // ── Date Grid ───────────────────────────────────────────────────
+
+    private var dateGridSection: some View {
+        VStack(alignment: .leading, spacing: .space4) {
+            Text("Date Grid")
+                .font(.appTitleMedium)
+                .foregroundStyle(Color.typographyPrimary)
+
+            sectionLabel("Full week strip (self-managed, today selected)")
+            AppDateGrid()
+
+            sectionLabel("Controlled — selected: \(formattedSelectedDate)")
+            AppDateGrid(selectedDate: $selectedDate)
+
+            sectionLabel("Individual cells")
+            HStack(spacing: 0) {
+                ForEach(-2...2, id: \.self) { offset in
+                    let d = Calendar.current.date(byAdding: .day, value: offset, to: Date()) ?? Date()
+                    AppDateItem(date: d, isActive: offset == 0) { _ in }
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.surfacesBaseLowContrast)
+            )
+        }
+    }
+
+    private var formattedSelectedDate: String {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        return f.string(from: selectedDate)
+    }
 
     // ── Radio Buttons ───────────────────────────────────────────────
 

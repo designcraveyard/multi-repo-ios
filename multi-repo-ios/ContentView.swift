@@ -56,6 +56,9 @@ private struct CarouselCard: Identifiable {
 // MARK: - Component Showcase
 
 struct ContentView: View {
+    // DateGrid
+    @State private var selectedGridDate = Date()
+
     // Button
     @State private var isLoading = false
 
@@ -1578,6 +1581,37 @@ struct ContentView: View {
                         )
                     }
 
+                    // ── DateGrid ─────────────────────────────────────────
+                    ShowcaseSection(title: "DateGrid — Full week strip") {
+                        // Uncontrolled: manages its own selection, defaults to today
+                        AppDateGrid()
+                    }
+
+                    ShowcaseSection(title: "DateGrid — Controlled selection") {
+                        VStack(alignment: .leading, spacing: .space2) {
+                            AppDateGrid(selectedDate: $selectedGridDate)
+                            Text("Selected: \(selectedGridDate, formatter: mediumDateFormatter)")
+                                .font(.appCaptionMedium)
+                                .foregroundStyle(Color.typographyMuted)
+                        }
+                    }
+
+                    ShowcaseSection(title: "DateGrid — Individual cells") {
+                        // Five cells centred on today, middle one active
+                        HStack(spacing: 0) {
+                            ForEach(-2...2, id: \.self) { offset in
+                                let d = Calendar.current.date(byAdding: .day, value: offset, to: Date()) ?? Date()
+                                AppDateItem(date: d, isActive: offset == 0) { _ in }
+                            }
+                        }
+                        .padding(.horizontal, CGFloat.space2)
+                        .padding(.vertical, CGFloat.space1)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.surfacesBaseLowContrast)
+                        )
+                    }
+
                 }
                 .padding(.horizontal, .space4)
                 .padding(.vertical, .space6)
@@ -1729,6 +1763,14 @@ struct ContentView: View {
         .background(Color.surfacesBasePrimary)
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.large)
+    }
+
+    // MARK: - Date Formatter (DateGrid demo)
+
+    private var mediumDateFormatter: DateFormatter {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        return f
     }
 
     // MARK: - Sheet List Icon Helper
