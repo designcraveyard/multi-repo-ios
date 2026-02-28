@@ -30,7 +30,7 @@ import Foundation
 /// Declares what kinds of user input a given transform config accepts.
 /// Configs that accept `.image` can receive base64 or URL image content
 /// alongside (or instead of) plain text.
-enum TransformInputType {
+enum TransformInputType: Hashable, Sendable {
     case text
     case image
 }

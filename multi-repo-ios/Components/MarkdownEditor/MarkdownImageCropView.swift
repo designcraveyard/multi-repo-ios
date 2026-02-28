@@ -298,7 +298,7 @@ private struct CropHandleVisuals: View {
 
     var body: some View {
         Canvas { context, _ in
-            let c = color
+            _ = color
             // Corner handles — L-shaped brackets
             drawCorner(context: context, x: cropRect.minX, y: cropRect.minY, dx: 1, dy: 1)
             drawCorner(context: context, x: cropRect.maxX, y: cropRect.minY, dx: -1, dy: 1)

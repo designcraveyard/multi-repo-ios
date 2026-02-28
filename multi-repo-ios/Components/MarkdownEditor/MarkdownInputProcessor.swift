@@ -121,7 +121,7 @@ struct MarkdownInputProcessor {
         let nsString = textStorage.string as NSString
         let lineRange = nsString.lineRange(for: NSRange(location: range.location, length: 0))
         let line = nsString.substring(with: lineRange)
-        let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+        _ = line.trimmingCharacters(in: .whitespacesAndNewlines)
 
         if reverse {
             // Remove 2 spaces from beginning if present

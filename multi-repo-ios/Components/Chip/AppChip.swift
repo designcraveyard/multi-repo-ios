@@ -223,7 +223,7 @@ public struct AppChip: View {
 
 /// Type-erased Shape wrapper to allow runtime switching between Capsule and RoundedRectangle
 /// in `hitTestShape`. This is the pre-iOS 17 equivalent of the built-in `AnyShape`.
-private struct AnyShape: Shape {
+private struct AnyShape: Shape, @unchecked Sendable {
     private let _path: (CGRect) -> Path
     init<S: Shape>(_ shape: S) { _path = { rect in shape.path(in: rect) } }
     func path(in rect: CGRect) -> Path { _path(rect) }

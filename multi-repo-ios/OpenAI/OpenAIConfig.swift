@@ -30,14 +30,14 @@ enum OpenAIConfig {
 
     /// OpenAI API key. Used by OpenAIManager for Authorization headers.
     /// Override via OPENAI_API_KEY env var in the Xcode scheme.
-    static let apiKey: String = {
+    nonisolated(unsafe) static let apiKey: String = {
         ProcessInfo.processInfo.environment["OPENAI_API_KEY"]
             ?? OpenAISecrets.apiKey
     }()
 
     /// USDA FoodData Central API key. Used by FoodLoggerConfig's food_search tool handler.
     /// Override via USDA_API_KEY env var in the Xcode scheme.
-    static let usdaApiKey: String = {
+    nonisolated(unsafe) static let usdaApiKey: String = {
         ProcessInfo.processInfo.environment["USDA_API_KEY"]
             ?? OpenAISecrets.usdaApiKey
     }()

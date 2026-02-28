@@ -286,7 +286,7 @@ public extension View {
     VStack(spacing: CGFloat.space4) {
         AppToast(message: "Settings saved", variant: .default, description: "Your preferences updated.", dismissible: true)
         AppToast(message: "Upload complete!", variant: .success, description: "Your file is ready to share.")
-        AppToast(message: "Connection unstable", variant: .warning, actionLabel: "Retry") {}
+        AppToast(message: "Connection unstable", variant: .warning, actionLabel: "Retry", onDismiss: {})
         AppToast(message: "Failed to save", variant: .error, description: "Check your connection.", dismissible: true)
         AppToast(
             message: "Item archived",

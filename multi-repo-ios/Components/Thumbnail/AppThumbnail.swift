@@ -204,7 +204,7 @@ extension AppThumbnail where FallbackContent == EmptyView {
 
 // MARK: - AnyShape helper
 
-private struct AnyShape: Shape {
+private struct AnyShape: Shape, @unchecked Sendable {
     private let _path: (CGRect) -> Path
     init<S: Shape>(_ shape: S) { _path = { rect in shape.path(in: rect) } }
     func path(in rect: CGRect) -> Path { _path(rect) }
