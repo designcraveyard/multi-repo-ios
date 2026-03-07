@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import PhosphorSwift
 
 struct AIDemoView: View {
     @State private var inputText = ""

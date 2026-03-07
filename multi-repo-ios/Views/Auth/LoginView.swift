@@ -10,7 +10,6 @@
 
 import SwiftUI
 import AuthenticationServices
-import PhosphorSwift
 
 // MARK: - LoginView
 

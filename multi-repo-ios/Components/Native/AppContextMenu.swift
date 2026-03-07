@@ -15,7 +15,6 @@
 //      }
 
 import SwiftUI
-import PhosphorSwift
 
 // MARK: - AppContextMenuItem
 

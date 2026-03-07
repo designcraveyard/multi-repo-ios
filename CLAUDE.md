@@ -65,27 +65,28 @@ Token categories in `DesignTokens.swift`:
 
 ---
 
-## Icon System (Phosphor Icons)
+## Icon System (PhosphorSlim)
 
-**Package:** PhosphorSwift via SPM — `https://github.com/phosphor-icons/swift` (upToNextMajorVersion: 2.0.0)
+**Local:** `PhosphorSlim.swift` — lightweight `Ph` enum with ~45 icons (vs 9,108 in PhosphorSwift SPM). SVGs in `Resources/PhosphorIcons.xcassets/`.
 **Helper:** `PhosphorIconHelper.swift` — `View` extension helpers + `PhosphorIconSize` enum
-**Same icon set used in Figma, web, and iOS.**
+**Same icon set used in Figma, web, and iOS. No `import` needed — compiled directly into the target.**
 
 ### How the Swift API works
 
-Icons are accessed as `Ph.<name>.<weight>` — each returns a SwiftUI `View` (a resizable `Image`). Chain `.iconSize()`, `.iconColor()`, and `.iconAccessibility(label:)` from `PhosphorIconHelper.swift` to apply design tokens.
+Icons are accessed as `Ph.<name>.<weight>` — each returns a SwiftUI `Image`. Chain `.iconSize()`, `.iconColor()`, and `.iconAccessibility(label:)` from `PhosphorIconHelper.swift` to apply design tokens.
+
+To add a new icon: run `/add-phosphor-icon <name>` (downloads SVG from CDN, creates xcasset, adds enum case).
 
 ### Rules
 
 - Use `Ph.<name>.<weight>.iconSize(.<token>)` for all icon usage
 - Default weight: `.regular` · Default size: `.md` (20pt)
 - Use `Color.appIcon*` tokens for color, not hardcoded hex/rgb
+- No `import` needed — `PhosphorSlim.swift` is in the same module
 
 ### Usage
 
 ```swift
-import PhosphorSwift
-
 // Basic — regular weight, md size (20pt), inherits foreground color
 Ph.house.regular.iconSize(.md)
 
@@ -128,7 +129,7 @@ No CocoaPods or Mint in this project — SPM only.
 **Xcode**: File → Add Package Dependencies
 
 Installed packages:
-- **PhosphorSwift**: `https://github.com/phosphor-icons/swift` — Up To Next Major from 2.0.0 ✓
+- **PhosphorSlim** (local): `PhosphorSlim.swift` + SVGs in `Resources/PhosphorIcons.xcassets/` — NOT an SPM package. Run `/add-phosphor-icon <name>` to add icons.
 
 Required packages (add when running `/supabase-setup`):
 - **Supabase Swift**: `https://github.com/supabase/supabase-swift` — Up To Next Major from 2.0.0

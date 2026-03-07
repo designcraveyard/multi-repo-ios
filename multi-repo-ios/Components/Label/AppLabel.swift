@@ -9,7 +9,6 @@
 //   AppLabel(label: "Draft", size: .sm, type: .information, showTrailingIcon: false)
 
 import SwiftUI
-import PhosphorSwift
 
 // MARK: - Types
 

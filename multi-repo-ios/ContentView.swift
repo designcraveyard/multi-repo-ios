@@ -1,6 +1,5 @@
 import SwiftUI
 import UIKit
-import PhosphorSwift
 
 // MARK: - ShareSheet
 

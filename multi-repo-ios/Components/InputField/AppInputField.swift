@@ -19,7 +19,6 @@
 //       leadingSeparator: true)
 
 import SwiftUI
-import PhosphorSwift
 
 // MARK: - Types
 

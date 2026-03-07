@@ -14,7 +14,6 @@
 //   )
 //   AppListItem(title: "Depart", subtitle: "Flight at 08:00", trailing: .button(label: "Edit") { })
 
-import PhosphorSwift
 import SwiftUI
 import UIKit
 

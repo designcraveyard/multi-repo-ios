@@ -3,7 +3,7 @@
  *
  * SwiftUI size-token layer for Phosphor Icons.
  *
- * Package: https://github.com/phosphor-icons/swift (PhosphorSwift, v2+)
+ * Source: PhosphorSlim.swift (local lightweight replacement for PhosphorSwift SPM)
  * Web counterpart: app/components/icons/Icon.tsx  (<Icon name="House" />)
  *
  * ── How Phosphor Swift works ───────────────────────────────────────────────
@@ -45,7 +45,6 @@
  */
 
 import SwiftUI
-import PhosphorSwift
 
 // MARK: - Icon Size Token
 

@@ -9,7 +9,6 @@
 //   AppStepIndicator()            // incomplete
 //   AppStepIndicator(completed: true)
 
-import PhosphorSwift
 import SwiftUI
 
 // MARK: - AppStepIndicator
