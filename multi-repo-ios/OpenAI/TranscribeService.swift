@@ -2,16 +2,19 @@
 //  TranscribeService.swift
 //  multi-repo-ios
 //
-//  Speech-to-text service using OpenAI's Whisper API (POST /audio/transcriptions).
+//  Speech-to-text service backed by the `ai-transcribe` Supabase Edge Function.
 //
-//  Unlike TransformService which streams SSE events, this service makes a single
-//  non-streaming POST request with multipart/form-data encoding (required by the
-//  Whisper API) and returns the full transcript at once.
+//  History: this service previously POSTed straight to OpenAI's Whisper API with a
+//  client-side API key. The key now lives only in Supabase function secrets and all
+//  calls go through the JWT-protected edge function instead.
+//
+//  Unlike TransformService, this makes a single non-streaming POST with
+//  multipart/form-data encoding (the audio must upload as a binary file field)
+//  and returns the full transcript at once.
 //
 //  Multipart construction:
-//    The Whisper API requires audio uploaded as a file field in a multipart body.
-//    We build the body manually using RFC 2046 boundary-delimited parts rather than
-//    using a third-party multipart library, keeping the dependency footprint zero.
+//    The body is built manually using RFC 2046 boundary-delimited parts rather than
+//    a third-party multipart library, keeping the dependency footprint zero.
 //    Each part follows the pattern:
 //      --<boundary>\r\n
 //      Content-Disposition: form-data; name="fieldName"\r\n\r\n
@@ -25,19 +28,20 @@
 //
 
 import Foundation
+import Supabase
 
 // MARK: - TranscribeService
 
-/// Singleton service that transcribes audio data to text via the Whisper API.
-/// Accepts raw audio `Data` (typically M4A from AppAudioRecorder) and returns
-/// a `TranscribeResult` with the transcript text, detected language, and duration.
+/// Singleton service that transcribes audio data to text via the `ai-transcribe`
+/// edge function. Accepts raw audio `Data` (typically M4A from AppAudioRecorder)
+/// and returns a `TranscribeResult` with the transcript text and language.
 @MainActor
 final class TranscribeService {
     static let shared = TranscribeService()
 
     private init() {}
 
-    /// Transcribes audio data using OpenAI's Whisper model.
+    /// Transcribes audio data via the `ai-transcribe` edge function (Whisper-backed).
     ///
     /// - Parameters:
     ///   - audioData: Raw audio bytes (M4A from AppAudioRecorder, or WebM from web).
@@ -46,42 +50,40 @@ final class TranscribeService {
     ///     in the multipart body so the API can identify the codec.
     ///   - language: Optional ISO-639-1 language hint (e.g. "en"). When provided,
     ///     Whisper skips language detection and may produce better results.
-    /// - Returns: A `TranscribeResult` with transcript text and optional metadata.
+    /// - Returns: A `TranscribeResult` with transcript text and detected language.
+    ///   (`duration` is always nil — the edge function does not report it.)
     /// - Throws: `TranscribeServiceError.apiError` on HTTP failures,
     ///           `TranscribeServiceError.formatError` if the response can't be parsed.
     func transcribe(audioData: Data, mimeType: String = "audio/m4a", language: String? = nil) async throws -> TranscribeResult {
 
+        // The edge function enforces verify_jwt — a valid signed-in session is required.
+        let session = try await SupabaseManager.shared.client.auth.session
+
+        let url = SupabaseManager.shared.supabaseURL
+            .appendingPathComponent("functions/v1/ai-transcribe")
+
         // --- Build multipart/form-data request ---
         // Use a UUID as the boundary separator — guaranteed unique, avoids collisions with body content.
         let boundary = UUID().uuidString
-        var request = OpenAIManager.shared.makeMultipartRequest(path: "audio/transcriptions")
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
 
         var body = Data()
 
-        // Part 1: model name — tells the API which Whisper model to use
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"model\"\r\n\r\n".data(using: .utf8)!)
-        body.append("\(OpenAIConfig.whisperModel)\r\n".data(using: .utf8)!)
-
-        // Part 2: response format — "verbose_json" gives us language and duration metadata
-        // alongside the transcript text (vs plain "json" which only returns text)
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"response_format\"\r\n\r\n".data(using: .utf8)!)
-        body.append("verbose_json\r\n".data(using: .utf8)!)
-
-        // Part 3 (optional): language hint — improves accuracy when the language is known
+        // Part 1 (optional): language hint — improves accuracy when the language is known
         if let language {
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
             body.append("Content-Disposition: form-data; name=\"language\"\r\n\r\n".data(using: .utf8)!)
             body.append("\(language)\r\n".data(using: .utf8)!)
         }
 
-        // Part 4: audio file — the actual audio data with filename and MIME type.
-        // The filename extension must match the actual codec for the API to decode correctly.
+        // Part 2: audio file — the actual audio data with filename and MIME type.
+        // The filename extension must match the actual codec for Whisper to decode correctly.
         let ext = mimeType == "audio/m4a" ? "m4a" : "webm"
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"file\"; filename=\"audio.\(ext)\"\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"audio\"; filename=\"audio.\(ext)\"\r\n".data(using: .utf8)!)
         body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
         body.append(audioData)
         body.append("\r\n".data(using: .utf8)!)
@@ -98,13 +100,12 @@ final class TranscribeService {
             throw TranscribeServiceError.apiError("Invalid response")
         }
         guard httpResponse.statusCode == 200 else {
-            // Include the API's error body in the exception for debugging
+            // Include the edge function's error body in the exception for debugging
             let errorText = String(data: data, encoding: .utf8) ?? "Unknown error"
             throw TranscribeServiceError.apiError("HTTP \(httpResponse.statusCode): \(errorText)")
         }
 
-        // Parse the verbose_json response. The "text" field is always present;
-        // "language" and "duration" are extras from the verbose format.
+        // Parse the JSON response: { text, language }
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let text = json["text"] as? String else {
             throw TranscribeServiceError.formatError("Cannot parse transcription response")
@@ -113,7 +114,7 @@ final class TranscribeService {
         return TranscribeResult(
             text: text,
             language: json["language"] as? String,
-            duration: json["duration"] as? Double
+            duration: nil
         )
     }
 }

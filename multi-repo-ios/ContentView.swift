@@ -164,12 +164,14 @@ struct ContentView: View {
                 AppNavTab(id: 0, label: "Chat",       icon: "bubble.left.and.text.bubble.right"),
                 AppNavTab(id: 1, label: "Components", icon: "square.grid.2x2"),
                 AppNavTab(id: 2, label: "Editor",     icon: "doc.richtext"),
-                AppNavTab(id: 3, label: "Settings",   icon: "gearshape"),
+                AppNavTab(id: 3, label: "AI Demo",    icon: "sparkles"),
+                AppNavTab(id: 4, label: "Settings",   icon: "gearshape"),
             ]
         ) {
             ChatView()
             showcaseTab
             editorTab
+            AIDemoView()
             settingsTab
         }
     }

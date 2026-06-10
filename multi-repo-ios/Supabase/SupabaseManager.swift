@@ -15,6 +15,10 @@ final class SupabaseManager {
 
     let client: SupabaseClient
 
+    /// Project base URL — exposed for building Edge Function endpoints
+    /// (`{supabaseURL}/functions/v1/<slug>`), used by Transform/TranscribeService.
+    let supabaseURL: URL
+
     private init() {
         // Prefer env vars (Xcode scheme) if set, fall back to compiled-in Secrets
         let urlString = ProcessInfo.processInfo.environment["SUPABASE_URL"]
@@ -26,6 +30,7 @@ final class SupabaseManager {
             fatalError("Invalid SUPABASE_URL: \(urlString)")
         }
 
+        supabaseURL = url
         client = SupabaseClient(supabaseURL: url, supabaseKey: anonKey)
     }
 }

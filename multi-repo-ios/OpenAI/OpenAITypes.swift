@@ -49,17 +49,17 @@ enum TransformInputType: Hashable, Sendable {
 /// ```
 struct TransformConfig {
     let id: String                              // Unique identifier for this config (used for logging/analytics)
-    let model: String                           // OpenAI model ID, e.g. "gpt-4o"
-    let systemPrompt: String                    // System instructions sent as `instructions` in the Responses API
-    let tools: [TransformTool]                  // Tools the model is allowed to invoke during generation
+    let model: String                           // Informational only — the model is chosen server-side by the ai-transform edge function
+    let systemPrompt: String                    // System instructions, sent as the edge function's custom prompt
+    let tools: [TransformTool]                  // Legacy: client-side tools are no longer invoked (implement tools server-side)
     let inputTypes: Set<TransformInputType>     // Declares accepted input modalities (text, image, or both)
     let maxOutputTokens: Int?                   // Optional cap on generated tokens (nil = model default)
     let temperature: Double?                    // Optional temperature override (nil = model default)
-    let toolHandlers: [String: ToolHandler]     // Maps tool name -> async closure that executes the tool locally
+    let toolHandlers: [String: ToolHandler]     // Legacy: no longer invoked — kept for source compatibility
 
     init(
         id: String,
-        model: String = OpenAIConfig.defaultModel,
+        model: String = "gpt-4.1-mini",
         systemPrompt: String,
         tools: [TransformTool] = [],
         inputTypes: Set<TransformInputType> = [.text],

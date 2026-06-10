@@ -33,8 +33,10 @@ final class AgentService: Sendable {
         if let plistURL = Bundle.main.object(forInfoDictionaryKey: "AGENT_BASE_URL") as? String, !plistURL.isEmpty {
             return plistURL
         }
-        // 3. Production fallback
-        return "https://your-app.vercel.app"
+        // 3. Default → hosted Vercel deployment (works on simulator and device).
+        //    Override via AGENT_BASE_URL (env var or Info.plist) to point at a
+        //    local dev server, e.g. http://localhost:3000 for the simulator.
+        return "https://multi-repo-nextjs.vercel.app"
     }
 
     private init() {}

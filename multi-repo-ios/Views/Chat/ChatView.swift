@@ -1,81 +1,106 @@
 import SwiftUI
 
-// MARK: - Chat View
-// Primary chat interface with SSE streaming, card rendering, and history.
+// MARK: - ChatView
+// Primary chat surface for the multi-agent Pokémon demo.
+// Matches 99-neo-iOS chat visual language: floating header that blurs on scroll,
+// light-grey asymmetric user bubble, avatar-less AI turns, sticky input bar.
 
 struct ChatView: View {
-    // --- State
+
+    // MARK: - State
+
     @State private var vm = ChatViewModel()
     @State private var inputText = ""
     @State private var showHistory = false
     @State private var audioRecorder = AppAudioRecorder()
     @State private var isTranscribing = false
+    @State private var scrollOffset: CGFloat = 0
+    @FocusState private var isInputFocused: Bool
 
     private var isRecording: Bool { audioRecorder.state == .recording }
+    private let headerHeight: CGFloat = 56
+
+    // MARK: - Body
 
     var body: some View {
-        NavigationStack {
+        ZStack(alignment: .top) {
             VStack(spacing: 0) {
-                // --- Message list
+                // Spacer below the floating header
+                Color.clear.frame(height: headerHeight)
+
                 messageList
 
-                AppDivider(type: .row)
+                bottomInputBar
+            }
 
-                // --- Input bar with mic
-                ChatInputBar(
-                    text: $inputText,
-                    isStreaming: vm.isStreaming || isTranscribing,
-                    onSend: { text in
-                        Task { await vm.sendMessage(text) }
-                    },
-                    isRecording: isRecording,
-                    onMicTap: handleMicTap
-                )
-            }
-            .background(Color.surfacesBasePrimary)
-            .navigationTitle("PokéChat")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        showHistory = true
-                    } label: {
-                        Ph.clock.regular
-                            .iconSize(.md)
-                            .iconColor(.appIconPrimary)
-                    }
-                    .accessibilityLabel("Chat history")
+            customHeader
+        }
+        .background(Color.surfacesBasePrimary)
+        .sheet(isPresented: $showHistory) {
+            ChatHistoryView(
+                sessions: vm.historySessions,
+                onSelect: { summary in
+                    Task { await vm.loadSession(summary) }
+                    showHistory = false
+                },
+                onDelete: { id in
+                    Task { await vm.deleteSession(id) }
+                },
+                onNewChat: {
+                    vm.newChat()
+                    showHistory = false
                 }
+            )
+            .presentationDetents([.fraction(0.9)])
+            .presentationDragIndicator(.visible)
+            .presentationCornerRadius(24)
+        }
+        .task { await vm.loadHistory() }
+    }
 
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        vm.newChat()
-                    } label: {
-                        Ph.pencilSimple.regular
-                            .iconSize(.md)
-                            .iconColor(.appIconPrimary)
-                    }
-                    .accessibilityLabel("New chat")
-                }
+    // MARK: - Custom Header (blurs on scroll)
+
+    private var customHeader: some View {
+        HStack(spacing: .space3) {
+            AppIconButton(
+                icon: AnyView(Ph.clock.regular),
+                label: "Chat history",
+                variant: .tertiary,
+                size: .lg
+            ) {
+                showHistory = true
             }
-            .sheet(isPresented: $showHistory) {
-                ChatHistoryView(
-                    sessions: vm.historySessions,
-                    onSelect: { summary in
-                        Task { await vm.loadSession(summary) }
-                    },
-                    onDelete: { id in
-                        Task { await vm.deleteSession(id) }
-                    },
-                    onNewChat: {
-                        vm.newChat()
-                    }
-                )
-            }
-            .task {
-                await vm.loadHistory()
+
+            Spacer()
+
+            Text("PokéChat")
+                .font(.appTitleSmall)
+                .foregroundStyle(Color.typographyPrimary)
+
+            Spacer()
+
+            AppIconButton(
+                icon: AnyView(Ph.pencilSimple.regular),
+                label: "New chat",
+                variant: .tertiary,
+                size: .lg
+            ) {
+                vm.newChat()
             }
         }
+        .padding(.horizontal, .space5)
+        .frame(height: headerHeight)
+        .background {
+            if scrollOffset > 10 {
+                Color.surfacesBasePrimary.opacity(0.85)
+                    .background(.ultraThinMaterial)
+                    .ignoresSafeArea()
+            } else {
+                Color.surfacesBasePrimary
+                    .ignoresSafeArea()
+            }
+        }
+        .animation(.easeOut(duration: 0.2), value: scrollOffset > 10)
     }
 
     // MARK: - Message List
@@ -83,10 +108,20 @@ struct ChatView: View {
     private var messageList: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: .space3) {
+                GeometryReader { geo in
+                    Color.clear
+                        .preference(
+                            key: ScrollOffsetKey.self,
+                            value: -geo.frame(in: .named("chatScroll")).minY
+                        )
+                }
+                .frame(height: 0)
+
+                LazyVStack(alignment: .leading, spacing: 0) {
                     if vm.messages.isEmpty {
                         emptyState
-                            .padding(.top, 80)
+                            .padding(.top, 60)
+                            .frame(maxWidth: .infinity)
                     } else {
                         ForEach(vm.messages) { message in
                             messageRow(message)
@@ -94,24 +129,36 @@ struct ChatView: View {
                         }
                     }
 
-                    // Invisible anchor for auto-scroll
                     Color.clear
-                        .frame(height: 1)
+                        .frame(height: 16)
                         .id("bottom")
                 }
-                .padding(.horizontal, .space4)
-                .padding(.vertical, .space4)
+                .padding(.top, .space4)
+            }
+            .coordinateSpace(name: "chatScroll")
+            .onPreferenceChange(ScrollOffsetKey.self) { offset in
+                scrollOffset = offset
+            }
+            .simultaneousGesture(TapGesture().onEnded { isInputFocused = false })
+            .onChange(of: vm.messages.count) { _, _ in
+                scrollToBottom(proxy: proxy)
             }
             .onChange(of: vm.streamToken) { _, _ in
-                withAnimation(.easeOut(duration: 0.2)) {
-                    proxy.scrollTo("bottom", anchor: .bottom)
-                }
+                scrollToBottom(proxy: proxy, animated: false)
             }
-            .onChange(of: vm.messages.count) { _, _ in
-                withAnimation(.easeOut(duration: 0.2)) {
-                    proxy.scrollTo("bottom", anchor: .bottom)
-                }
+            .onChange(of: vm.isStreaming) { _, streaming in
+                if !streaming { scrollToBottom(proxy: proxy) }
             }
+        }
+    }
+
+    private func scrollToBottom(proxy: ScrollViewProxy, animated: Bool = true) {
+        if animated {
+            withAnimation(.easeOut(duration: 0.3)) {
+                proxy.scrollTo("bottom", anchor: .bottom)
+            }
+        } else {
+            proxy.scrollTo("bottom", anchor: .bottom)
         }
     }
 
@@ -121,85 +168,99 @@ struct ChatView: View {
     private func messageRow(_ message: ChatMessage) -> some View {
         switch message {
         case .user(_, let text):
-            HStack {
-                Spacer(minLength: 60)
-                Text(text)
-                    .font(.appBodyMedium)
-                    .foregroundStyle(Color.white)
-                    .padding(.horizontal, .space4)
-                    .padding(.vertical, .space3)
-                    .background(Color.surfacesBrandInteractive, in: RoundedRectangle(cornerRadius: .radiusLG))
-            }
+            userBubble(text: text)
+                .padding(.horizontal, .space5)
+                .padding(.vertical, .space2)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
 
         case .aiText(_, let markdown):
-            HStack(alignment: .top, spacing: .space2) {
-                aiAvatar
-                VStack(alignment: .leading, spacing: 0) {
-                    markdownText(markdown)
-                        .font(.appBodyMedium)
-                        .foregroundStyle(Color.typographyPrimary)
-                }
-                Spacer(minLength: 40)
-            }
+            aiTextView(text: markdown)
+                .padding(.horizontal, .space5)
+                .padding(.vertical, .space3)
+                .transition(.opacity)
 
         case .aiEvent(_, let label):
-            HStack(alignment: .top, spacing: .space2) {
-                aiAvatar
+            HStack {
                 SSEStreamEventView(label: label)
                 Spacer()
             }
+            .padding(.horizontal, .space5)
+            .padding(.vertical, .space2)
+            .transition(.opacity)
 
         case .aiPokemonCard(_, let data):
-            HStack(alignment: .top, spacing: .space2) {
-                aiAvatar
-                PokemonCardView(data: data)
-                Spacer(minLength: 0)
-            }
+            PokemonCardView(data: data)
+                .padding(.horizontal, .space5)
+                .padding(.vertical, .space2)
+                .transition(.opacity)
 
         case .aiEvolutionCard(_, let data):
-            HStack(alignment: .top, spacing: .space2) {
-                aiAvatar
-                EvolutionCardView(data: data)
-                Spacer(minLength: 0)
-            }
+            EvolutionCardView(data: data)
+                .padding(.horizontal, .space5)
+                .padding(.vertical, .space2)
+                .transition(.opacity)
 
         case .aiTypeMatchupCard(_, let data):
-            HStack(alignment: .top, spacing: .space2) {
-                aiAvatar
-                TypeMatchupCardView(data: data)
-                Spacer(minLength: 0)
-            }
+            TypeMatchupCardView(data: data)
+                .padding(.horizontal, .space5)
+                .padding(.vertical, .space2)
+                .transition(.opacity)
 
         case .aiTeamCard(_, let data):
-            HStack(alignment: .top, spacing: .space2) {
-                aiAvatar
-                TeamCardView(data: data)
-                Spacer(minLength: 0)
-            }
+            TeamCardView(data: data)
+                .padding(.horizontal, .space5)
+                .padding(.vertical, .space2)
+                .transition(.opacity)
         }
     }
 
-    // MARK: - Markdown Rendering
+    // MARK: - User Bubble (99-neo shape: asymmetric radius, light grey)
+
+    private func userBubble(text: String) -> some View {
+        Text(text)
+            .font(.appBodyLarge)
+            .foregroundStyle(Color.typographySecondary)
+            .padding(.horizontal, .space4)
+            .padding(.vertical, .space3)
+            .background(Color.surfacesBaseLowContrast)
+            .clipShape(
+                .rect(
+                    topLeadingRadius: .radiusMD,
+                    bottomLeadingRadius: .radiusMD,
+                    bottomTrailingRadius: .radiusMD,
+                    topTrailingRadius: .radiusXS
+                )
+            )
+            .contentShape(Rectangle())
+            .contextMenu {
+                Button {
+                    UIPasteboard.general.string = text
+                } label: {
+                    Label("Copy", systemImage: "doc.on.doc")
+                }
+            }
+    }
+
+    // MARK: - AI Text (markdown via AttributedString; upgrade to MarkdownUI later)
 
     @ViewBuilder
-    private func markdownText(_ markdown: String) -> some View {
-        if let attributed = try? AttributedString(markdown: markdown) {
+    private func aiTextView(text: String) -> some View {
+        if let attributed = try? AttributedString(
+            markdown: text,
+            options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+        ) {
             Text(attributed)
+                .font(.appBodyLarge)
+                .foregroundStyle(Color.typographyPrimary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .textSelection(.enabled)
         } else {
-            Text(markdown)
-        }
-    }
-
-    // MARK: - AI Avatar
-
-    private var aiAvatar: some View {
-        ZStack {
-            Circle()
-                .fill(Color.surfacesBrandInteractive.opacity(0.12))
-                .frame(width: 28, height: 28)
-            Image(systemName: "sparkles")
-                .font(.system(size: 12))
-                .foregroundStyle(Color.surfacesBrandInteractive)
+            Text(text)
+                .font(.appBodyLarge)
+                .foregroundStyle(Color.typographyPrimary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .textSelection(.enabled)
         }
     }
 
@@ -211,9 +272,9 @@ struct ChatView: View {
                 Circle()
                     .fill(Color.surfacesBrandInteractive.opacity(0.1))
                     .frame(width: 72, height: 72)
-                Image(systemName: "sparkles")
-                    .font(.system(size: 28))
-                    .foregroundStyle(Color.surfacesBrandInteractive)
+                Ph.star.regular
+                    .iconSize(.xl)
+                    .iconColor(Color.iconsBrand)
             }
 
             VStack(spacing: .space2) {
@@ -228,13 +289,18 @@ struct ChatView: View {
             }
 
             VStack(spacing: .space2) {
-                ForEach(["Who should I use against Water types?", "Build me a balanced team", "Show Eevee's evolution chain"], id: \.self) { suggestion in
+                ForEach([
+                    "Who should I use against Water types?",
+                    "Build me a balanced team",
+                    "Show Eevee's evolution chain"
+                ], id: \.self) { suggestion in
                     Button {
                         inputText = suggestion
+                        isInputFocused = true
                     } label: {
                         Text(suggestion)
                             .font(.appBodySmall)
-                            .foregroundStyle(Color.surfacesBrandInteractive)
+                            .foregroundStyle(Color.appTextBrand)
                             .padding(.horizontal, .space4)
                             .padding(.vertical, .space2)
                             .background(
@@ -244,15 +310,35 @@ struct ChatView: View {
                     }
                 }
             }
+            .padding(.top, .space2)
         }
-        .frame(maxWidth: .infinity)
+        .padding(.horizontal, .space6)
+    }
+
+    // MARK: - Bottom Input Bar
+
+    private var bottomInputBar: some View {
+        VStack(spacing: 0) {
+            Divider()
+                .foregroundStyle(Color.borderMuted)
+
+            ChatInputBar(
+                text: $inputText,
+                isStreaming: vm.isStreaming || isTranscribing,
+                onSend: { text in
+                    Task { await vm.sendMessage(text) }
+                },
+                isRecording: isRecording,
+                onMicTap: handleMicTap
+            )
+            .focused($isInputFocused)
+        }
     }
 
     // MARK: - Voice Input
 
     private func handleMicTap() {
         if isRecording {
-            // Stop recording and transcribe
             isTranscribing = true
             Task {
                 defer { isTranscribing = false }
@@ -265,7 +351,6 @@ struct ChatView: View {
                 }
             }
         } else {
-            // Start recording
             Task {
                 do {
                     try await audioRecorder.startRecording()
@@ -274,6 +359,15 @@ struct ChatView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Scroll Offset Preference
+
+private struct ScrollOffsetKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }
 

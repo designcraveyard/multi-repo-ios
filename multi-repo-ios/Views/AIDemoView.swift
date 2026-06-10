@@ -2,13 +2,43 @@
 //  AIDemoView.swift
 //  multi-repo-ios
 //
-//  Demo screen for OpenAI Transform (food logger) and Transcribe services.
+//  Demo screen for the AI Transform and Transcribe services, both backed by
+//  JWT-protected Supabase Edge Functions (ai-transform / ai-transcribe).
+//  Cross-platform counterpart of the web /ai-demo route.
+//
+//  Pick a transform action, type or dictate some text, and run it. The mic
+//  button records via AppAudioRecorder, transcribes through TranscribeService,
+//  and drops the transcript into the input field.
 //
 
 import SwiftUI
 
 struct AIDemoView: View {
+
+    // MARK: - Transform actions
+    // Each action maps to a MarkdownTransformConfig preset (plain text-in/text-out
+    // prompts that work for any text, not just markdown).
+
+    private enum DemoAction: String, CaseIterable, Identifiable {
+        case summarise = "Summarise"
+        case keyPoints = "Key Points"
+        case actions = "List Actions"
+
+        var id: String { rawValue }
+
+        var config: TransformConfig {
+            switch self {
+            case .summarise: return MarkdownTransformConfig.summarise
+            case .keyPoints: return MarkdownTransformConfig.keyPointers
+            case .actions:   return MarkdownTransformConfig.listActions
+            }
+        }
+    }
+
+    // MARK: - State
+
     @State private var inputText = ""
+    @State private var selectedAction: DemoAction = .summarise
     @State private var responseText = ""
     @State private var transcriptText = ""
     @State private var isStreaming = false
@@ -16,22 +46,33 @@ struct AIDemoView: View {
     @State private var errorMessage: String?
     @State private var audioRecorder = AppAudioRecorder()
 
+    // MARK: - Body
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: CGFloat.space4) {
                 // MARK: - Header
-                Text("AI Food Logger Demo")
+                Text("AI Transform & Transcribe")
                     .font(.appHeadingLarge)
                     .foregroundStyle(Color.typographyPrimary)
 
-                Text("Type or speak what you ate and get nutritional info from the USDA database.")
+                Text("Type or dictate some text, pick an action, and run it through the JWT-protected edge functions.")
                     .font(.appBodyMedium)
                     .foregroundStyle(Color.typographyMuted)
 
+                // MARK: - Action Picker
+                Picker("Action", selection: $selectedAction) {
+                    ForEach(DemoAction.allCases) { action in
+                        Text(action.rawValue).tag(action)
+                    }
+                }
+                .pickerStyle(.segmented)
+
                 // MARK: - Input Area
                 HStack(spacing: CGFloat.space2) {
-                    TextField("e.g. a large apple, grilled chicken breast...", text: $inputText)
+                    TextField("e.g. paste meeting notes, a long paragraph...", text: $inputText, axis: .vertical)
                         .font(.appBodyMedium)
+                        .lineLimit(1...4)
                         .textFieldStyle(.roundedBorder)
                         .onSubmit { Task { await handleSend() } }
 
@@ -99,12 +140,6 @@ struct AIDemoView: View {
                         Text(responseText.isEmpty ? "Thinking..." : responseText)
                             .font(.appBodyMedium)
                             .foregroundStyle(Color.typographyPrimary)
-                        if isStreaming {
-                            RoundedRectangle(cornerRadius: 1)
-                                .fill(Color.typographyPrimary)
-                                .frame(width: 2, height: 16)
-                                .opacity(0.6)
-                        }
                     }
                     .padding(CGFloat.space4)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -156,7 +191,7 @@ struct AIDemoView: View {
 
         do {
             let stream = TransformService.shared.stream(
-                config: FoodLoggerConfig.config,
+                config: selectedAction.config,
                 input: TransformInput(text: text)
             )
             for try await event in stream {
@@ -187,7 +222,6 @@ struct AIDemoView: View {
                 transcriptText = result.text
                 inputText = result.text
                 isTranscribing = false
-                await handleSend()
             } catch {
                 isTranscribing = false
                 errorMessage = error.localizedDescription

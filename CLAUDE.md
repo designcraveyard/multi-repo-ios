@@ -10,10 +10,11 @@ See the root `CLAUDE.md` for workspace-wide context, skills, and shared conventi
 ## Commands
 
 ```bash
-# Build for iPhone 16 simulator
+# Build for iPhone 17 simulator (iOS 26.2 — matches the deployment target;
+# the iPhone 16 sims on this machine run iOS 18.x and will not match)
 xcodebuild -project multi-repo-ios.xcodeproj \
   -scheme multi-repo-ios \
-  -destination 'platform=iOS Simulator,name=iPhone 16' \
+  -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' \
   build
 
 # Open in Xcode (preferred for day-to-day development)
@@ -191,9 +192,9 @@ else { LoginView() }
 ## Screens / Views
 
 - `Views/Auth/LoginView.swift` — Login screen
-- `ContentView.swift` — Main view (shown after auth) — 5 tabs: Components, Editor, AI Demo, Settings, Assistant
-- `Views/AIDemoView.swift` — AI Demo (Transform/Transcribe)
-- `Views/AssistantView.swift` — AI Assistant (WebView loading ChatKit)
+- `ContentView.swift` — Main view (shown after auth) — 5 tabs: Chat, Components, Editor, AI Demo, Settings
+- `Views/Chat/ChatView.swift` — Agent chat demo (SSE streaming via `Services/AgentService.swift` against the web `/api/chat` endpoint, Bearer JWT)
+- `Views/AIDemoView.swift` — AI Transform & Transcribe demo (JWT-protected Supabase edge functions `ai-transform` / `ai-transcribe` — no client-side OpenAI keys)
 
 _Add new `*View.swift` entries here as features are added via `/cross-platform-feature` or `/new-screen`._
 
