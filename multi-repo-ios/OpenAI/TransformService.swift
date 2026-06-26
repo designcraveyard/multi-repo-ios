@@ -16,9 +16,8 @@
 //  (AppMarkdownEditor AI toolbar, AIDemoView) work without modification.
 //
 //  The config's `systemPrompt` is sent as the edge function's `custom` action prompt,
-//  so every TransformConfig keeps working. Client-side tool handlers are no longer
-//  supported — tools must be implemented server-side (see lib/agents on web for the
-//  tool-calling pattern, or the /api/chat agent graph for streaming + tools).
+//  so every TransformConfig keeps working. The former Agents SDK chat/tool graph has
+//  been removed, so transform configs should remain text-in/text-out.
 //
 
 import Foundation

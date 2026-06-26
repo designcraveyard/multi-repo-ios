@@ -192,8 +192,7 @@ else { LoginView() }
 ## Screens / Views
 
 - `Views/Auth/LoginView.swift` — Login screen
-- `ContentView.swift` — Main view (shown after auth) — 5 tabs: Chat, Components, Editor, AI Demo, Settings
-- `Views/Chat/ChatView.swift` — Agent chat demo (SSE streaming via `Services/AgentService.swift` against the web `/api/chat` endpoint, Bearer JWT)
+- `ContentView.swift` — Main view (shown after auth) — 4 tabs: Components, Editor, AI Demo, Settings
 - `Views/AIDemoView.swift` — AI Transform & Transcribe demo (JWT-protected Supabase edge functions `ai-transform` / `ai-transcribe` — no client-side OpenAI keys)
 
 _Add new `*View.swift` entries here as features are added via `/cross-platform-feature` or `/new-screen`._

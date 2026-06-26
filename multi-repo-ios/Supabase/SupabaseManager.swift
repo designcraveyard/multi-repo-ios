@@ -20,17 +20,7 @@ final class SupabaseManager {
     let supabaseURL: URL
 
     private init() {
-        // Prefer env vars (Xcode scheme) if set, fall back to compiled-in Secrets
-        let urlString = ProcessInfo.processInfo.environment["SUPABASE_URL"]
-            ?? Secrets.supabaseURL
-        let anonKey = ProcessInfo.processInfo.environment["SUPABASE_ANON_KEY"]
-            ?? Secrets.supabaseAnonKey
-
-        guard let url = URL(string: urlString) else {
-            fatalError("Invalid SUPABASE_URL: \(urlString)")
-        }
-
-        supabaseURL = url
-        client = SupabaseClient(supabaseURL: url, supabaseKey: anonKey)
+        supabaseURL = SupabaseConfig.url
+        client = SupabaseClient(supabaseURL: SupabaseConfig.url, supabaseKey: SupabaseConfig.anonKey)
     }
 }

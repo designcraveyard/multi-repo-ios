@@ -8,7 +8,7 @@
 		<true/>
 	</dict>
 	<key>GIDClientID</key>
-	<string>225246924892-j8isof6kj43geg9j54651kt2hd5c62al.apps.googleusercontent.com</string>
+	<string>366043307503-mjhnvojdadrdbjgg9d5oa7qgoqupggg3.apps.googleusercontent.com</string>
 	<key>NSCameraUsageDescription</key>
 	<string>This app uses the camera to insert photos into your notes.</string>
 	<key>NSMicrophoneUsageDescription</key>
@@ -24,7 +24,7 @@
 			<string>com.google.reversed-client-id</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.225246924892-j8isof6kj43geg9j54651kt2hd5c62al</string>
+				<string>com.googleusercontent.apps.366043307503-mjhnvojdadrdbjgg9d5oa7qgoqupggg3</string>
 			</array>
 		</dict>
 	</array>
