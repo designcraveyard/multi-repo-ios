@@ -59,6 +59,7 @@ public struct AppSwitch: View {
             }
         }
         .disabled(disabled)
+        .tint(Color.surfacesBrandInteractive)
         .opacity(disabled ? 0.5 : 1.0)
         .accessibilityValue(checked ? "On" : "Off")
     }

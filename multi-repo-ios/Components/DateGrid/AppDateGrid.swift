@@ -58,6 +58,7 @@ public struct AppDateItem: View {
     let onSelect: (Date) -> Void
 
     private var isToday: Bool { Calendar.current.isDateInToday(date) }
+    @Environment(\.colorScheme) private var colorScheme
 
     public init(
         date: Date,
@@ -77,13 +78,13 @@ public struct AppDateItem: View {
         VStack(spacing: 2) { // Spacings/Micro = 2px
             // --- Day abbreviation: Badge/Medium — 10px semibold, always muted
             Text(dayAbbr(for: date))
-                .font(.system(size: 10, weight: .semibold))
+                .font(.appBadgeMedium)
                 .foregroundStyle(Color.typographyMuted)
                 .lineLimit(1)
 
             // --- Numeric date: Body/Large (default) or Body/LargeEmphasized (active)
             Text(formattedDay(date))
-                .font(.system(size: 16, weight: isActive ? .medium : .regular))
+                .font(isActive ? .appBodyLargeEm : .appBodyLarge)
                 .foregroundStyle(isActive ? Color.typographyPrimary : Color.typographyMuted)
                 .lineLimit(1)
 
@@ -125,7 +126,7 @@ public struct AppDateItem: View {
     private var backgroundShape: some View {
         if isActive {
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color.surfacesBasePrimary)
+                .fill(colorScheme == .dark ? Color.surfacesBaseHighContrastHover : Color.surfacesBasePrimary)
                 .shadow(color: Color.surfacesBaseHighContrast.opacity(0.6), radius: 8, x: 0, y: 2)
         } else {
             Color.clear

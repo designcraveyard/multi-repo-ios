@@ -323,8 +323,7 @@ enum NativeBottomNavStyling {
             UIColor(Colors.activeIcon)
         appearance.stackedLayoutAppearance.selected.titleTextAttributes = [
             .foregroundColor: UIColor(Colors.activeLabel),
-            .font: UIFont.systemFont(ofSize: Typography.labelSize,
-                                     weight: Typography.activeLabelWeight)
+            .font: UIFont.appInterSemibold(size: Typography.labelSize)
         ]
         appearance.stackedLayoutAppearance.selected.badgeBackgroundColor =
             UIColor(Colors.badge)
@@ -337,8 +336,7 @@ enum NativeBottomNavStyling {
             UIColor(Colors.inactiveIcon)
         appearance.stackedLayoutAppearance.normal.titleTextAttributes = [
             .foregroundColor: UIColor(Colors.inactiveLabel),
-            .font: UIFont.systemFont(ofSize: Typography.labelSize,
-                                     weight: Typography.inactiveLabelWeight)
+            .font: UIFont.appInterRegular(size: Typography.labelSize)
         ]
         appearance.stackedLayoutAppearance.normal.badgeBackgroundColor =
             UIColor(Colors.badge)
@@ -457,6 +455,10 @@ enum NativeContextMenuStyling {
 
         // Background fill of the AppPopoverMenu card.
         static let background = Color.appSurfaceBasePrimary
+
+        static func background(for colorScheme: ColorScheme) -> Color {
+            colorScheme == .dark ? Color.surfacesBaseHighContrast : Color.surfacesBasePrimary
+        }
 
         // Color of the 1px divider lines drawn between menu rows in AppPopoverMenu.
         static let rowDivider = Color.appBorderMuted
@@ -615,15 +617,14 @@ enum NativeColorPickerStyling {
 }
 
 // MARK: - 13. Range Slider
-// Native SwiftUI view : Two overlapping Slider views + custom track overlay
+// Native SwiftUI view : Two regular Slider views
 // Wrapper             : Components/Native/AppRangeSlider.swift
 //
 // SwiftUI has no built-in range slider. This implementation uses two standard
-// Slider views stacked in a ZStack:
+// Slider views stacked vertically:
 //   • The lower Slider controls the minimum bound
 //   • The upper Slider controls the maximum bound
-// Both sliders' tracks are hidden via .tint(.clear); a custom active-track
-// Rectangle is drawn between the two thumb positions.
+// iOS owns the slider appearance, including the system Liquid Glass treatment.
 
 enum NativeRangeSliderStyling {
 
@@ -657,7 +658,10 @@ enum NativeRangeSliderStyling {
 
         // Total height of the slider component including thumb hit area.
         // Must be at least 44pt to satisfy accessibility minimum touch target.
-        static let totalHeight: CGFloat = 44
+        static let totalHeight: CGFloat = 72
+
+        // Vertical space between the lower and upper native sliders.
+        static let sliderSpacing = CGFloat.space1
 
         // Diameter of the thumb circles (informational — set by system on native Slider).
         static let thumbDiameter: CGFloat = 24

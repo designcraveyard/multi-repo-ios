@@ -147,6 +147,7 @@ public struct AppInputField: View {
     let trailingPicker: InputPickerConfig?
     let leadingSeparator: Bool
     let trailingSeparator: Bool
+    let keyboardType: UIKeyboardType
     let isDisabled: Bool
 
     @FocusState private var isFocused: Bool
@@ -167,6 +168,7 @@ public struct AppInputField: View {
         trailingPicker: InputPickerConfig? = nil,
         leadingSeparator: Bool = false,
         trailingSeparator: Bool = false,
+        keyboardType: UIKeyboardType = .default,
         isDisabled: Bool = false
     ) {
         self._text = text
@@ -182,6 +184,7 @@ public struct AppInputField: View {
         self.trailingPicker = trailingPicker
         self.leadingSeparator = leadingSeparator
         self.trailingSeparator = trailingSeparator
+        self.keyboardType = keyboardType
         self.isDisabled = isDisabled
     }
 
@@ -243,6 +246,7 @@ public struct AppInputField: View {
                 TextField(placeholder, text: $text)
                     .font(INPUT_FONT)
                     .foregroundStyle(Color.typographyPrimary)
+                    .keyboardType(keyboardType)
                     .tint(Color.surfacesBrandInteractive)
                     .focused($isFocused)
                     .disabled(isDisabled)

@@ -11,6 +11,9 @@
 //   .font(.appBody)
 
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 // MARK: - Hex Color Initialiser
 
@@ -426,61 +429,71 @@ extension CGFloat {
 }
 
 // MARK: - Typography Tokens  (Figma "🎨 Tokens & Styles" page, node 18:577)
-// Font family: Inter (Figma) → system default on iOS (closest match).
+// Font family: Inter (Figma) → bundled static Inter faces on iOS.
 // Overline tokens require a .tracking() modifier for letter-spacing:
 //   .font(.appOverlineSmall).tracking(1)   // 1pt tracking
 //   .font(.appOverlineLarge).tracking(2)   // 2pt tracking
 
+private enum InterFontFace {
+    static let regular = "Inter-Regular"
+    static let medium = "Inter-Medium"
+    static let semibold = "Inter-SemiBold"
+    static let bold = "Inter-Bold"
+}
+
 extension Font {
+    private static func appInter(size: CGFloat, face: String) -> Font {
+        .custom(face, size: size)
+    }
 
     // ── Display ──────────────────────────────────────────────────────────────
-    static let appDisplayLarge:  Font = .system(size: 96, weight: .regular)
-    static let appDisplayMedium: Font = .system(size: 80, weight: .regular)
-    static let appDisplaySmall:  Font = .system(size: 64, weight: .regular)
+    static let appDisplayLarge:  Font = appInter(size: 96, face: InterFontFace.regular)
+    static let appDisplayMedium: Font = appInter(size: 80, face: InterFontFace.regular)
+    static let appDisplaySmall:  Font = appInter(size: 64, face: InterFontFace.regular)
 
     // ── Heading ───────────────────────────────────────────────────────────────
-    static let appHeadingLarge:  Font = .system(size: 56, weight: .bold)
-    static let appHeadingMedium: Font = .system(size: 48, weight: .bold)
-    static let appHeadingSmall:  Font = .system(size: 40, weight: .bold)
+    static let appHeadingLarge:  Font = appInter(size: 56, face: InterFontFace.bold)
+    static let appHeadingMedium: Font = appInter(size: 48, face: InterFontFace.bold)
+    static let appHeadingSmall:  Font = appInter(size: 40, face: InterFontFace.bold)
 
     // ── Title ─────────────────────────────────────────────────────────────────
-    static let appTitleLarge:    Font = .system(size: 28, weight: .bold)
-    static let appTitleMedium:   Font = .system(size: 24, weight: .bold)
-    static let appTitleSmall:    Font = .system(size: 20, weight: .bold)
+    static let appTitleLarge:    Font = appInter(size: 28, face: InterFontFace.bold)
+    static let appTitleMedium:   Font = appInter(size: 24, face: InterFontFace.bold)
+    static let appTitleSmall:    Font = appInter(size: 20, face: InterFontFace.bold)
 
     // ── Body ──────────────────────────────────────────────────────────────────
-    static let appBodyLarge:     Font = .system(size: 16, weight: .regular)
-    static let appBodyMedium:    Font = .system(size: 14, weight: .regular)
-    static let appBodySmall:     Font = .system(size: 12, weight: .regular)
+    static let appBodyLarge:     Font = appInter(size: 16, face: InterFontFace.regular)
+    static let appBodyMedium:    Font = appInter(size: 14, face: InterFontFace.regular)
+    static let appBodySmall:     Font = appInter(size: 12, face: InterFontFace.regular)
 
     // ── Body Emphasized ───────────────────────────────────────────────────────
-    static let appBodyLargeEm:   Font = .system(size: 16, weight: .medium)
-    static let appBodyMediumEm:  Font = .system(size: 14, weight: .medium)
-    static let appBodySmallEm:   Font = .system(size: 12, weight: .medium)
+    static let appBodyLargeEm:   Font = appInter(size: 16, face: InterFontFace.medium)
+    static let appBodyMediumEm:  Font = appInter(size: 14, face: InterFontFace.medium)
+    static let appBodySmallEm:   Font = appInter(size: 12, face: InterFontFace.medium)
 
     // ── CTA (call-to-action / buttons) ────────────────────────────────────────
-    static let appCTALarge:      Font = .system(size: 16, weight: .semibold)
-    static let appCTAMedium:     Font = .system(size: 14, weight: .semibold)
-    static let appCTASmall:      Font = .system(size: 12, weight: .semibold)
+    static let appCTALarge:      Font = appInter(size: 16, face: InterFontFace.semibold)
+    static let appCTAMedium:     Font = appInter(size: 14, face: InterFontFace.semibold)
+    static let appCTASmall:      Font = appInter(size: 12, face: InterFontFace.semibold)
 
     // ── Link ──────────────────────────────────────────────────────────────────
-    static let appLinkLarge:     Font = .system(size: 16, weight: .medium)
-    static let appLinkMedium:    Font = .system(size: 14, weight: .medium)
-    static let appLinkSmall:     Font = .system(size: 12, weight: .medium)
+    static let appLinkLarge:     Font = appInter(size: 16, face: InterFontFace.medium)
+    static let appLinkMedium:    Font = appInter(size: 14, face: InterFontFace.medium)
+    static let appLinkSmall:     Font = appInter(size: 12, face: InterFontFace.medium)
 
     // ── Caption ───────────────────────────────────────────────────────────────
-    static let appCaptionMedium: Font = .system(size: 12, weight: .regular)
-    static let appCaptionSmall:  Font = .system(size: 10, weight: .regular)
+    static let appCaptionMedium: Font = appInter(size: 12, face: InterFontFace.regular)
+    static let appCaptionSmall:  Font = appInter(size: 10, face: InterFontFace.regular)
 
     // ── Badge ─────────────────────────────────────────────────────────────────
-    static let appBadgeMedium:   Font = .system(size: 10, weight: .semibold)
-    static let appBadgeSmall:    Font = .system(size:  8, weight: .semibold)
+    static let appBadgeMedium:   Font = appInter(size: 10, face: InterFontFace.semibold)
+    static let appBadgeSmall:    Font = appInter(size:  8, face: InterFontFace.semibold)
 
     // ── Overline ──────────────────────────────────────────────────────────────
     // Pair with .tracking(1) or .tracking(2) for Figma letter-spacing.
-    static let appOverlineSmall:  Font = .system(size:  8, weight: .bold)
-    static let appOverlineMedium: Font = .system(size: 10, weight: .bold)
-    static let appOverlineLarge:  Font = .system(size: 12, weight: .bold)
+    static let appOverlineSmall:  Font = appInter(size:  8, face: InterFontFace.bold)
+    static let appOverlineMedium: Font = appInter(size: 10, face: InterFontFace.bold)
+    static let appOverlineLarge:  Font = appInter(size: 12, face: InterFontFace.bold)
 
     // ── Legacy aliases — keeps existing call-sites compiling ──────────────────
     /// Alias → appTitleLarge (28pt bold)
@@ -490,3 +503,23 @@ extension Font {
     /// Alias → appCaptionMedium (12pt regular)
     static var appCaption: Font { appCaptionMedium }
 }
+
+#if canImport(UIKit)
+extension UIFont {
+    static func appInterRegular(size: CGFloat) -> UIFont {
+        UIFont(name: InterFontFace.regular, size: size) ?? .systemFont(ofSize: size, weight: .regular)
+    }
+
+    static func appInterMedium(size: CGFloat) -> UIFont {
+        UIFont(name: InterFontFace.medium, size: size) ?? .systemFont(ofSize: size, weight: .medium)
+    }
+
+    static func appInterSemibold(size: CGFloat) -> UIFont {
+        UIFont(name: InterFontFace.semibold, size: size) ?? .systemFont(ofSize: size, weight: .semibold)
+    }
+
+    static func appInterBold(size: CGFloat) -> UIFont {
+        UIFont(name: InterFontFace.bold, size: size) ?? .systemFont(ofSize: size, weight: .bold)
+    }
+}
+#endif

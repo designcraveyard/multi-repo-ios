@@ -136,9 +136,12 @@ public struct AppThumbnail<FallbackContent: View>: View {
 
     private var fallbackFont: Font {
         switch size {
-        case .xs, .sm: return .appCaptionSmall
-        case .md, .lg: return .appCaptionMedium
-        case .xl, .xxl: return .appBodySmall
+        case .xs: return .system(size: 11, weight: .semibold, design: .default)
+        case .sm: return .system(size: 13, weight: .semibold, design: .default)
+        case .md: return .system(size: 15, weight: .semibold, design: .default)
+        case .lg: return .system(size: 20, weight: .semibold, design: .default)
+        case .xl: return .system(size: 24, weight: .semibold, design: .default)
+        case .xxl: return .system(size: 28, weight: .semibold, design: .default)
         }
     }
 

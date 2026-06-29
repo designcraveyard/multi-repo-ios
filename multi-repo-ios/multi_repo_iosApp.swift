@@ -23,10 +23,8 @@ struct multi_repo_iosApp: App {
             Group {
                 if authManager.isLoading {
                     AppProgressLoader()
-                } else if authManager.currentUser != nil {
-                    ContentView()
                 } else {
-                    LoginView()
+                    ContentView()
                 }
             }
             .environment(authManager)

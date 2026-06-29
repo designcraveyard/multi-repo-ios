@@ -89,9 +89,9 @@ public struct AppSegmentControlBar: View {
     @Environment(\.colorScheme) private var colorScheme
 
     /// Light mode: white thumb (BasePrimary) for max contrast on grey track.
-    /// Dark mode: subtle grey thumb (BaseHighContrast) for elevated appearance.
+    /// Dark mode: brighter grey thumb (BaseHighContrastHover) for elevated appearance.
     private var segmentThumbColor: Color {
-        colorScheme == .dark ? Color.surfacesBaseHighContrast : Color.surfacesBasePrimary
+        colorScheme == .dark ? Color.surfacesBaseHighContrastHover : Color.surfacesBasePrimary
     }
 
     public init(

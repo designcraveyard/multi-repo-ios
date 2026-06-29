@@ -13,6 +13,13 @@
 	<string>This app uses the camera to insert photos into your notes.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>This app uses the microphone for voice transcription.</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Inter-Regular.ttf</string>
+		<string>Inter-Medium.ttf</string>
+		<string>Inter-SemiBold.ttf</string>
+		<string>Inter-Bold.ttf</string>
+	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

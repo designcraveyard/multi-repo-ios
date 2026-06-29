@@ -98,6 +98,7 @@ public struct AppStepper: View {
                     .fill(Color.appBorderDefault)
                     .frame(width: 2)
                     .frame(maxHeight: .infinity)
+                    .padding(.bottom, -CGFloat.space2)
             }
         }
         .frame(width: 12)

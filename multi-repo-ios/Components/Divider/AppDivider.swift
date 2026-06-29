@@ -62,14 +62,18 @@ public struct AppDivider: View {
         type == .section ? 8 : 1
     }
 
+    private var verticalLineColor: Color {
+        .appBorderDefault
+    }
+
     // MARK: - Body
 
     public var body: some View {
         switch orientation {
         case .vertical:
             Rectangle()
-                .fill(lineColor)
-                .frame(width: 1)
+                .fill(verticalLineColor)
+                .frame(width: 2)
                 .accessibilityHidden(true)
 
         case .horizontal:

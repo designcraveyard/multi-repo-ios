@@ -88,6 +88,7 @@ public struct AppPopoverMenu<Label: View>: View {
     @Binding var isPresented: Bool
     let items: [AppContextMenuItem]
     @ViewBuilder let label: () -> Label
+    @Environment(\.colorScheme) private var colorScheme
 
     public var body: some View {
         Button { isPresented = true } label: { label() }
@@ -128,7 +129,7 @@ public struct AppPopoverMenu<Label: View>: View {
                 .padding(.vertical, NativeContextMenuStyling.Layout.menuPaddingV)
                 .frame(minWidth: 200)
                 .presentationCompactAdaptation(.popover)
-                .presentationBackground(Color.surfacesBasePrimary)
+                .presentationBackground(NativeContextMenuStyling.Colors.background(for: colorScheme))
             }
     }
 }

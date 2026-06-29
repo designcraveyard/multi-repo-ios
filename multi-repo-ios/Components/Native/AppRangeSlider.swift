@@ -1,18 +1,15 @@
 // AppRangeSlider.swift
 // Style source: NativeComponentStyling.swift > NativeRangeSliderStyling
 //
-// Custom DragGesture-based range slider. The previous dual-Slider approach caused
-// both thumbs to move simultaneously because overlapping Slider gesture recognizers
-// conflicted. This version uses a single DragGesture with proximity-based thumb
-// selection — only the nearest thumb moves on each drag.
+// Native Slider-based range control. iOS owns the slider rendering, including the
+// current Liquid Glass treatment, while this wrapper preserves range constraints,
+// labels, and the haptic cadence used by the custom version.
 //
 // How it works:
-//   * GeometryReader measures the available width
-//   * Two Circle thumbs are drawn at normalized lower/upper positions
-//   * A single DragGesture covers the entire track area
-//   * On touch-down, the closest thumb is selected (ActiveThumb enum)
-//   * On drag, only the active thumb's value updates
-//   * Step snapping rounds to the nearest step increment
+//   * Two regular SwiftUI Slider controls are stacked vertically.
+//   * The lower Slider is clamped below the upper value.
+//   * The upper Slider is clamped above the lower value.
+//   * Step snapping is delegated to Slider when step > 0.
 //
 // Usage:
 //   @State var low  = 20.0
@@ -56,9 +53,6 @@ public struct AppRangeSlider: View {
         step > 0 ? step : (range.upperBound - range.lowerBound) * 0.01
     }
 
-    /// Tracks which thumb the current gesture is dragging.
-    @State private var activeThumb: ActiveThumb? = nil
-
     private enum ActiveThumb { case lower, upper }
 
     // MARK: - Continuous Haptic Tracking
@@ -81,91 +75,20 @@ public struct AppRangeSlider: View {
 
     public var body: some View {
         VStack(spacing: NativeRangeSliderStyling.Layout.labelSpacing) {
-            GeometryReader { geometry in
-                let width = geometry.size.width
-                let thumbR = NativeRangeSliderStyling.Layout.thumbDiameter / 2
-                // Usable horizontal range for thumb center positions
-                let trackW = max(width - NativeRangeSliderStyling.Layout.thumbDiameter, 1)
+            VStack(spacing: NativeRangeSliderStyling.Layout.sliderSpacing) {
+                nativeSlider(
+                    value: lowerBinding,
+                    thumb: .lower,
+                    bounds: range.lowerBound...(upperValue - minDistance)
+                )
 
-                ZStack(alignment: .leading) {
-                    // ── Background (inactive) track
-                    Capsule()
-                        .fill(NativeRangeSliderStyling.Colors.trackBackground)
-                        .frame(height: NativeRangeSliderStyling.Layout.trackHeight)
-                        .padding(.horizontal, thumbR)
-
-                    // ── Active track segment between lower and upper thumbs
-                    Capsule()
-                        .fill(NativeRangeSliderStyling.Colors.trackActive)
-                        .frame(
-                            width: CGFloat(normalizedUpper - normalizedLower) * trackW,
-                            height: NativeRangeSliderStyling.Layout.trackHeight
-                        )
-                        .offset(x: thumbR + CGFloat(normalizedLower) * trackW)
-
-                    // ── Lower thumb
-                    thumbCircle
-                        .offset(x: CGFloat(normalizedLower) * trackW)
-
-                    // ── Upper thumb
-                    thumbCircle
-                        .offset(x: CGFloat(normalizedUpper) * trackW)
-                }
-                .frame(height: NativeRangeSliderStyling.Layout.totalHeight)
-                .contentShape(Rectangle())
-                .gesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { gesture in
-                            let ratio = Double(max(0, min((gesture.location.x - thumbR) / trackW, 1)))
-                            let rawValue = range.lowerBound + ratio * rangeSpan
-                            let snapped = step > 0
-                                ? (rawValue / step).rounded() * step
-                                : rawValue
-                            let clamped = min(max(snapped, range.lowerBound), range.upperBound)
-
-                            // On first touch, select the nearest thumb + impact haptic.
-                            // Also snapshot current values for continuous haptic tracking.
-                            if activeThumb == nil {
-                                let dLower = abs(clamped - lowerValue)
-                                let dUpper = abs(clamped - upperValue)
-                                activeThumb = dLower <= dUpper ? .lower : .upper
-                                impactFeedback.impactOccurred()
-                                lastHapticLower = lowerValue
-                                lastHapticUpper = upperValue
-                            }
-
-                            // Update only the active thumb, respecting minDistance.
-                            // Step mode: fire a selection tick on each discrete change.
-                            // Continuous mode (step=0): fire a selection tick every 1% of range.
-                            switch activeThumb {
-                            case .lower:
-                                let newValue = min(clamped, upperValue - minDistance)
-                                if step > 0 {
-                                    if newValue != lowerValue { selectionFeedback.selectionChanged() }
-                                } else if abs(newValue - lastHapticLower) >= rangeSpan * 0.01 {
-                                    selectionFeedback.selectionChanged()
-                                    lastHapticLower = newValue
-                                }
-                                lowerValue = newValue
-                            case .upper:
-                                let newValue = max(clamped, lowerValue + minDistance)
-                                if step > 0 {
-                                    if newValue != upperValue { selectionFeedback.selectionChanged() }
-                                } else if abs(newValue - lastHapticUpper) >= rangeSpan * 0.01 {
-                                    selectionFeedback.selectionChanged()
-                                    lastHapticUpper = newValue
-                                }
-                                upperValue = newValue
-                            case .none:
-                                break
-                            }
-                        }
-                        .onEnded { _ in
-                            activeThumb = nil
-                        }
+                nativeSlider(
+                    value: upperBinding,
+                    thumb: .upper,
+                    bounds: (lowerValue + minDistance)...range.upperBound
                 )
             }
-            .frame(height: NativeRangeSliderStyling.Layout.totalHeight)
+            .frame(minHeight: NativeRangeSliderStyling.Layout.totalHeight)
 
             // ── Optional min/max labels
             if showLabels {
@@ -184,32 +107,97 @@ public struct AppRangeSlider: View {
 
     // MARK: - Subviews
 
-    /// Reusable thumb circle view with shadow and border.
-    private var thumbCircle: some View {
-        Circle()
-            .fill(NativeRangeSliderStyling.Colors.thumb)
-            .overlay(Circle().stroke(NativeRangeSliderStyling.Colors.thumbShadow, lineWidth: 0.5))
-            .shadow(color: .black.opacity(0.15), radius: 2, y: 1)
-            .frame(
-                width: NativeRangeSliderStyling.Layout.thumbDiameter,
-                height: NativeRangeSliderStyling.Layout.thumbDiameter
+    @ViewBuilder
+    private func nativeSlider(
+        value: Binding<Double>,
+        thumb: ActiveThumb,
+        bounds: ClosedRange<Double>
+    ) -> some View {
+        if step > 0 {
+            Slider(
+                value: value,
+                in: normalizedBounds(bounds),
+                step: step,
+                onEditingChanged: { editingChanged($0, thumb: thumb) }
             )
+            .tint(NativeRangeSliderStyling.Colors.trackActive)
+        } else {
+            Slider(
+                value: value,
+                in: normalizedBounds(bounds),
+                onEditingChanged: { editingChanged($0, thumb: thumb) }
+            )
+            .tint(NativeRangeSliderStyling.Colors.trackActive)
+        }
     }
 
     // MARK: - Helpers
 
     private var rangeSpan: Double { range.upperBound - range.lowerBound }
 
-    /// Lower value normalized to 0…1
-    private var normalizedLower: Double {
-        guard rangeSpan > 0 else { return 0 }
-        return (lowerValue - range.lowerBound) / rangeSpan
+    private var lowerBinding: Binding<Double> {
+        Binding(
+            get: { lowerValue },
+            set: { newValue in
+                let clamped = min(max(newValue, range.lowerBound), upperValue - minDistance)
+                handleHaptic(for: .lower, oldValue: lowerValue, newValue: clamped)
+                lowerValue = clamped
+            }
+        )
     }
 
-    /// Upper value normalized to 0…1
-    private var normalizedUpper: Double {
-        guard rangeSpan > 0 else { return 1 }
-        return (upperValue - range.lowerBound) / rangeSpan
+    private var upperBinding: Binding<Double> {
+        Binding(
+            get: { upperValue },
+            set: { newValue in
+                let clamped = max(min(newValue, range.upperBound), lowerValue + minDistance)
+                handleHaptic(for: .upper, oldValue: upperValue, newValue: clamped)
+                upperValue = clamped
+            }
+        )
+    }
+
+    private func normalizedBounds(_ bounds: ClosedRange<Double>) -> ClosedRange<Double> {
+        let lower = max(range.lowerBound, min(bounds.lowerBound, range.upperBound))
+        let upper = max(lower, min(bounds.upperBound, range.upperBound))
+        return lower...upper
+    }
+
+    private func editingChanged(_ isEditing: Bool, thumb: ActiveThumb) {
+        guard isEditing else { return }
+        impactFeedback.prepare()
+        selectionFeedback.prepare()
+        impactFeedback.impactOccurred()
+
+        switch thumb {
+        case .lower:
+            lastHapticLower = lowerValue
+        case .upper:
+            lastHapticUpper = upperValue
+        }
+    }
+
+    private func handleHaptic(for thumb: ActiveThumb, oldValue: Double, newValue: Double) {
+        guard newValue != oldValue else { return }
+
+        if step > 0 {
+            selectionFeedback.selectionChanged()
+            return
+        }
+
+        let threshold = rangeSpan * 0.01
+        switch thumb {
+        case .lower:
+            if abs(newValue - lastHapticLower) >= threshold {
+                selectionFeedback.selectionChanged()
+                lastHapticLower = newValue
+            }
+        case .upper:
+            if abs(newValue - lastHapticUpper) >= threshold {
+                selectionFeedback.selectionChanged()
+                lastHapticUpper = newValue
+            }
+        }
     }
 
     /// Formats a Double value for the min/max label -- integers show without decimal.

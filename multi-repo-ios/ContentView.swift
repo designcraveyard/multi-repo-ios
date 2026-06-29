@@ -27,11 +27,12 @@ private struct ShowcaseSection<Content: View>: View {
                 .tracking(1.5)
             content()
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
-// MARK: - Horizontal Scroll Row
-// Wraps any HStack content in a horizontal scroll view so it never clips.
+// MARK: - Horizontal Showcase Row
+// Keeps older showcase call sites stable while avoiding nested horizontal page scroll.
 
 private struct HScrollRow<Content: View>: View {
     @ViewBuilder let content: () -> Content
@@ -41,6 +42,8 @@ private struct HScrollRow<Content: View>: View {
                 content()
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
     }
 }
 
@@ -76,6 +79,7 @@ struct ContentView: View {
     // Toast
     @State private var showToast = false
     @State private var toastMessage = ""
+    @State private var toastDescription: String?
     @State private var toastVariant: AppToastVariant = .default
 
     // InputField
@@ -165,38 +169,37 @@ struct ContentView: View {
                 AppNavTab(id: 1, label: "Editor",     icon: "doc.richtext"),
                 AppNavTab(id: 2, label: "AI Demo",    icon: "sparkles"),
                 AppNavTab(id: 3, label: "Settings",   icon: "gearshape"),
+                AppNavTab(id: 4, label: "Login",      icon: "person.crop.circle"),
             ]
         ) {
             showcaseTab
             editorTab
             AIDemoView()
             settingsTab
+            LoginView()
         }
     }
 
     // MARK: - Toast Helper
 
-    /// Dismisses the current toast (if any) before showing a new one,
-    /// preventing color interpolation artifacts when the spring animation is mid-flight.
-    private func showToastWith(message: String, variant: AppToastVariant) {
-        if showToast {
-            withAnimation { showToast = false }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                toastMessage = message
-                toastVariant = variant
-                withAnimation { showToast = true }
-            }
-        } else {
+    /// Updates the toast content in place when one is already visible so repeated
+    /// triggers do not replay the bottom-slide animation.
+    private func showToastWith(message: String, description: String, variant: AppToastVariant) {
+        withAnimation(.easeOut(duration: 0.15)) {
             toastMessage = message
+            toastDescription = description
             toastVariant = variant
-            withAnimation { showToast = true }
+            showToast = true
         }
     }
 
     // MARK: - Showcase Tab
 
     private var showcaseTab: some View {
-        ScrollView {
+        GeometryReader { geometry in
+            let contentWidth = max(0, geometry.size.width - (CGFloat.space4 * 2))
+
+            ScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: 40) {
 
                     // ── Button: Variants ──────────────────────────────────
@@ -324,7 +327,7 @@ struct ContentView: View {
                                             .iconSize(token)
                                             .iconColor(.appIconPrimary)
                                         Text(label)
-                                            .font(.system(size: 10))
+                                            .font(.appCaptionSmall)
                                             .foregroundStyle(Color.typographyMuted)
                                     }
                                 }
@@ -348,7 +351,7 @@ struct ContentView: View {
                                     VStack(spacing: 4) {
                                         icon.iconColor(.appIconPrimary)
                                         Text(label)
-                                            .font(.system(size: 9))
+                                            .font(.appCaptionSmall)
                                             .foregroundStyle(Color.typographyMuted)
                                     }
                                 }
@@ -579,30 +582,20 @@ struct ContentView: View {
                         VStack(spacing: .space3) {
                             AppToast(message: "Settings saved", variant: .default, description: "Your preferences have been updated.", dismissible: true)
                             AppToast(message: "Upload complete!", variant: .success, description: "Your file is ready to share.")
-                            AppToast(message: "Connection unstable", variant: .warning, actionLabel: "Retry") {}
+                            AppToast(message: "Connection unstable", variant: .warning, description: "Some changes may take longer to sync.", actionLabel: "Retry", onAction: {})
                             AppToast(message: "Failed to save", variant: .error, description: "Check your connection.", dismissible: true)
                         }
                     }
 
                     ShowcaseSection(title: "Toast — With buttons") {
                         VStack(spacing: .space3) {
-                            AppToast(message: "New update available", variant: .default, actionLabel: "Update now") {}
+                            AppToast(message: "Draft archived", variant: .default, description: "The post moved to archive.", actionLabel: "Undo", onAction: {})
                             AppToast(
-                                message: "Item archived",
+                                message: "Invite sent",
                                 variant: .default,
-                                description: "Moved to trash.",
-                                trailingIconButton: ToastTrailingIconButton(
-                                    icon: AnyView(Image(systemName: "arrow.uturn.backward").resizable().scaledToFit()),
-                                    action: {}
-                                )
-                            )
-                            AppToast(
-                                message: "Message sent",
-                                variant: .success,
-                                trailingIconButton: ToastTrailingIconButton(
-                                    icon: AnyView(Image(systemName: "eye").resizable().scaledToFit()),
-                                    action: {}
-                                ),
+                                description: "Team members can respond from email.",
+                                actionLabel: "Manage",
+                                onAction: {},
                                 dismissible: true
                             )
                         }
@@ -612,13 +605,13 @@ struct ContentView: View {
                         HScrollRow {
                             HStack(spacing: .space2) {
                                 AppButton(label: "Settings saved", variant: .secondary, size: .sm) {
-                                    showToastWith(message: "Settings saved", variant: .default)
+                                    showToastWith(message: "Settings saved", description: "Your preferences have been updated.", variant: .default)
                                 }
                                 AppButton(label: "Upload complete", variant: .success, size: .sm) {
-                                    showToastWith(message: "Upload complete", variant: .success)
+                                    showToastWith(message: "Upload complete", description: "Your file is ready to share.", variant: .success)
                                 }
                                 AppButton(label: "Connection error", variant: .danger, size: .sm) {
-                                    showToastWith(message: "Connection error", variant: .error)
+                                    showToastWith(message: "Connection error", description: "Check your connection.", variant: .error)
                                 }
                             }
                             .padding(.trailing, .space4)
@@ -664,7 +657,7 @@ struct ContentView: View {
                                 ], id: \.0) { label, size in
                                     VStack(spacing: 4) {
                                         AppThumbnail(size: size)
-                                        Text(label).font(.system(size: 9)).foregroundStyle(Color.typographyMuted)
+                                        Text(label).font(.appCaptionSmall).foregroundStyle(Color.typographyMuted)
                                     }
                                 }
                             }
@@ -685,7 +678,7 @@ struct ContentView: View {
                                 ], id: \.0) { label, size in
                                     VStack(spacing: 4) {
                                         AppThumbnail(size: size, rounded: true)
-                                        Text(label).font(.system(size: 9)).foregroundStyle(Color.typographyMuted)
+                                        Text(label).font(.appCaptionSmall).foregroundStyle(Color.typographyMuted)
                                     }
                                 }
                             }
@@ -734,21 +727,21 @@ struct ContentView: View {
                         HScrollRow {
                             HStack(spacing: .space4) {
                                 AppLabel(
-                                    label: "Verified",
+                                    label: "Large left",
                                     size: .lg,
                                     type: .primaryAction,
                                     leadingIcon: AnyView(Ph.checkCircle.regular.iconSize(.lg))
                                 )
                                 AppLabel(
-                                    label: "USD",
+                                    label: "Medium right",
                                     size: .md,
-                                    type: .secondaryAction,
-                                    trailingIcon: AnyView(Ph.caretDown.regular.iconSize(.md))
+                                    type: .information,
+                                    trailingIcon: AnyView(Ph.caretRight.regular.iconSize(.md))
                                 )
                                 AppLabel(
-                                    label: "Info",
+                                    label: "Small both",
                                     size: .sm,
-                                    type: .information,
+                                    type: .brandInteractive,
                                     leadingIcon: AnyView(Ph.info.regular.iconSize(.sm)),
                                     trailingIcon: AnyView(Ph.caretRight.regular.iconSize(.sm))
                                 )
@@ -879,13 +872,15 @@ struct ContentView: View {
                                 text: $formName,
                                 label: "Full Name",
                                 placeholder: "Enter your name",
-                                leadingIcon: AnyView(Ph.user.regular.iconSize(.md))
+                                leadingIcon: AnyView(Ph.user.regular.iconSize(.md)),
+                                keyboardType: .default
                             )
                             AppInputField(
                                 text: $formEmail,
                                 label: "Email",
                                 placeholder: "you@example.com",
-                                leadingIcon: AnyView(Ph.envelope.regular.iconSize(.md))
+                                leadingIcon: AnyView(Ph.envelope.regular.iconSize(.md)),
+                                keyboardType: .emailAddress
                             )
                             AppNativePicker(
                                 label: "Country",
@@ -906,7 +901,8 @@ struct ContentView: View {
                                 text: $formPhone,
                                 label: "Phone",
                                 placeholder: "+1 (555) 000-0000",
-                                leadingIcon: AnyView(Ph.phone.regular.iconSize(.md))
+                                leadingIcon: AnyView(Ph.phone.regular.iconSize(.md)),
+                                keyboardType: .phonePad
                             )
                             AppTextField(
                                 text: $formBio,
@@ -1610,6 +1606,7 @@ struct ContentView: View {
                     }
 
                 }
+                .frame(width: contentWidth, alignment: .leading)
                 .padding(.horizontal, .space4)
                 .padding(.vertical, .space6)
             }
@@ -1639,12 +1636,13 @@ struct ContentView: View {
                     }
                 }
             }
-        .toastOverlay(isPresented: $showToast) {
-            AppToast(message: toastMessage, variant: toastVariant, dismissible: true, onDismiss: {
-                withAnimation { showToast = false }
-            })
-            .id("\(toastMessage)-\(toastVariant)")
+            .toastOverlay(isPresented: $showToast) {
+                AppToast(message: toastMessage, variant: toastVariant, description: toastDescription, dismissible: true, onDismiss: {
+                    withAnimation { showToast = false }
+                })
+            }
         }
+        .background(Color.surfacesBasePrimary)
     }
 
     // MARK: - Editor Tab (Apple Notes-style full page)

@@ -51,7 +51,7 @@ public struct AppStepIndicator: View {
             if completed {
                 Ph.check.bold
                     .iconSize(.xs)
-                    .foregroundStyle(Color.iconsOnBrandPrimary)
+                    .foregroundStyle(Color.iconsInversePrimary)
             }
         }
         .frame(width: 12, height: 12)
