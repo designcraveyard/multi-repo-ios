@@ -3,7 +3,7 @@
 //
 // ┌─────────────────────────────────────────────────────────────────────────────┐
 // │  ALL style values come from DesignTokens.swift — no hardcoded hex/numbers.  │
-// │  Color tokens: Color.appSurface*, Color.appText*, Color.appBorder*          │
+// │  Color tokens: Color.surfaces*, Color.typography*, Color.border*          │
 // │  Spacing tokens: CGFloat.space1 … CGFloat.space5 (4px grid)                │
 // │  Icon size tokens: CGFloat.iconSizeSm/.iconSizeMd/.iconSizeLg               │
 // │  Font tokens: Font.appCTASmall / .appCTAMedium / .appCTALarge              │
@@ -20,11 +20,11 @@ import SwiftUI
 
 /// Visual style of the button, matching Figma Button component set variants.
 public enum AppButtonVariant {
-    case primary    // --surface-brand          → text --text-on-brand-primary
-    case secondary  // --surface-brand-low-contrast → text --text-brand
-    case tertiary   // --surface-base-primary, border --border-brand → text --text-brand
-    case success    // --surface-success-solid  → text --text-on-brand-primary
-    case danger     // --surface-error-solid    → text --text-on-brand-primary
+    case primary    // --surfaces-brand-interactive          → text --typography-on-brand-primary
+    case secondary  // --surfaces-brand-interactive-low-contrast → text --typography-brand
+    case tertiary   // --surfaces-base-primary, border --border-brand → text --typography-brand
+    case success    // --surfaces-success-solid  → text --typography-on-brand-primary
+    case danger     // --surfaces-error-solid    → text --typography-on-brand-primary
 }
 
 /// Size tier, matching Figma _Button component set (Small / Medium / Large).
@@ -290,7 +290,7 @@ public struct AppButton: View {
     ScrollView {
         VStack(spacing: .space4) {
             Group {
-                Text("Primary").font(.appCaptionMedium).foregroundStyle(Color.appTextMuted)
+                Text("Primary").font(.appCaptionMedium).foregroundStyle(Color.typographyMuted)
                 AppButton(label: "Primary", variant: .primary, size: .lg) {}
                 AppButton(label: "Primary", variant: .primary, size: .md) {}
                 AppButton(label: "Primary", variant: .primary, size: .sm) {}
@@ -299,35 +299,35 @@ public struct AppButton: View {
             Divider()
 
             Group {
-                Text("Secondary").font(.appCaptionMedium).foregroundStyle(Color.appTextMuted)
+                Text("Secondary").font(.appCaptionMedium).foregroundStyle(Color.typographyMuted)
                 AppButton(label: "Secondary", variant: .secondary) {}
             }
 
             Divider()
 
             Group {
-                Text("Tertiary").font(.appCaptionMedium).foregroundStyle(Color.appTextMuted)
+                Text("Tertiary").font(.appCaptionMedium).foregroundStyle(Color.typographyMuted)
                 AppButton(label: "Tertiary", variant: .tertiary) {}
             }
 
             Divider()
 
             Group {
-                Text("Success").font(.appCaptionMedium).foregroundStyle(Color.appTextMuted)
+                Text("Success").font(.appCaptionMedium).foregroundStyle(Color.typographyMuted)
                 AppButton(label: "Success", variant: .success) {}
             }
 
             Divider()
 
             Group {
-                Text("Danger").font(.appCaptionMedium).foregroundStyle(Color.appTextMuted)
+                Text("Danger").font(.appCaptionMedium).foregroundStyle(Color.typographyMuted)
                 AppButton(label: "Delete", variant: .danger) {}
             }
 
             Divider()
 
             Group {
-                Text("States").font(.appCaptionMedium).foregroundStyle(Color.appTextMuted)
+                Text("States").font(.appCaptionMedium).foregroundStyle(Color.typographyMuted)
                 AppButton(label: "Loading…", variant: .primary, isLoading: true) {}
                 AppButton(label: "Disabled", variant: .primary, isDisabled: true) {}
                 AppButton(label: "Disabled", variant: .danger, isDisabled: true) {}
@@ -335,5 +335,5 @@ public struct AppButton: View {
         }
         .padding(.space4)
     }
-    .background(Color.appSurfaceBasePrimary)
+    .background(Color.surfacesBasePrimary)
 }

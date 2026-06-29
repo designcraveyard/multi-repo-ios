@@ -11,7 +11,7 @@
 // ║    3. Build — every usage of that component updates automatically           ║
 // ║                                                                             ║
 // ║  TOKEN QUICK REFERENCE                                                      ║
-// ║  Colors  : Color.appSurface*, Color.appText*, Color.appBorder*             ║
+// ║  Colors  : Color.surfaces*, Color.typography*, Color.border*             ║
 // ║  Spacing : CGFloat.space1(4px) … space12(48px)  — 4px grid                ║
 // ║  Radius  : CGFloat.radiusXS(4) radiusSM(8) radiusMD(12)                   ║
 // ║            radiusLG(16) radiusXL(24) radius2XL(32)                        ║
@@ -34,36 +34,36 @@ enum NativePickerStyling {
         //   • the checkmark next to the selected row in .menu style
         //   • the chevron/caret indicator on the trigger button
         //   • the selection highlight ring in .wheel style
-        // Change to Color.appSurfaceBrand for an all-black/white brand-colored picker.
-        static let tint = Color.appSurfaceBrand
+        // Change to Color.surfacesBrandInteractive for an all-black/white brand-colored picker.
+        static let tint = Color.surfacesBrandInteractive
 
         // Foreground color of the label text shown on the closed picker trigger.
         // This is the text the user reads before opening the menu.
-        static let label = Color.appTextPrimary
+        static let label = Color.typographyPrimary
 
         // Foreground color of the currently selected option's row text inside
         // the open dropdown. Making this distinct from optionText helps users
         // quickly spot their current selection.
-        static let selectedText = Color.appTextBrand
+        static let selectedText = Color.typographyBrand
 
         // Foreground color of all unselected options in the open dropdown list.
-        static let optionText = Color.appTextPrimary
+        static let optionText = Color.typographyPrimary
 
         // Background of the floating menu card that appears when the picker opens.
-        // Use appSurfaceBasePrimary for a plain white / pure-black card.
-        // Use appSurfaceBaseLowContrast (current) for a slightly elevated look.
-        static let menuBackground = Color.appSurfaceBaseLowContrast
+        // Use surfacesBasePrimary for a plain white / pure-black card.
+        // Use surfacesBaseLowContrast (current) for a slightly elevated look.
+        static let menuBackground = Color.surfacesBaseLowContrast
 
         // Text/icon color rendered when isDisabled == true is passed to AppNativePicker.
         // The container is also rendered at 0.5 opacity (design system disabled convention).
-        static let disabled = Color.appTextMuted
+        static let disabled = Color.typographyMuted
 
         // 1.5pt border drawn around the trigger container when showError == true.
         // Pair this with the errorText color for a consistent validation pattern.
-        static let errorBorder = Color.appBorderError
+        static let errorBorder = Color.borderError
 
         // Color of the helper / validation error message shown below the picker.
-        static let errorText = Color.appTextError
+        static let errorText = Color.typographyError
     }
 
     struct Layout {
@@ -110,26 +110,26 @@ enum NativeDatePickerStyling {
         // Foreground color for the picker label text (the text passed as `label:`).
         // In .compact style this appears to the left of the date button.
         // In .graphical style this is the month/year header.
-        static let label = Color.appTextPrimary
+        static let label = Color.typographyPrimary
 
         // Background of the entire DatePicker component area.
         // .graphical renders a card; this fills its background.
-        // Use appSurfaceBasePrimary for a clean white / pure-black card.
-        static let background = Color.appSurfaceBaseLowContrast
+        // Use surfacesBasePrimary for a clean white / pure-black card.
+        static let background = Color.surfacesBaseLowContrast
 
         // Color of the selected date numeral text inside the calendar grid.
         // iOS renders this on top of the `tint` circle — should contrast well.
-        static let selectedDayText = Color.appTextOnBrandPrimary  // white on indigo
+        static let selectedDayText = Color.typographyOnBrandPrimary  // white on indigo
 
         // Color of day numerals for dates that are NOT selected.
-        static let dayText = Color.appTextPrimary
+        static let dayText = Color.typographyPrimary
 
         // Color rendered for day numerals that fall outside the allowed date range
         // (i.e. dates before minimumDate or after maximumDate).
-        static let disabledDayText = Color.appTextMuted
+        static let disabledDayText = Color.typographyMuted
 
         // Foreground color for the weekday column headers (Mo, Tu, We …).
-        static let weekdayHeader = Color.appTextSecondary
+        static let weekdayHeader = Color.typographySecondary
     }
 
     struct Layout {
@@ -167,27 +167,27 @@ enum NativePageHeaderStyling {
     struct Colors {
         // Background fill of the navigation bar area.
         // This is applied via .toolbarBackground(_:for:) on the NavigationStack.
-        // Use appSurfaceBasePrimary for a standard white/black nav bar.
-        // Use appSurfaceBrand for a bold brand-colored nav bar.
-        static let background = Color.appSurfaceBasePrimary
+        // Use surfacesBasePrimary for a standard white/black nav bar.
+        // Use surfacesBrandInteractive for a bold brand-colored nav bar.
+        static let background = Color.surfacesBasePrimary
 
         // Tint color applied to:
         //   • The back button chevron and "Back" text
         //   • All ToolbarItem buttons in the leading and trailing positions
-        // Change to Color.appSurfaceAccentPrimary for an accent-colored nav bar.
-        static let tint = Color.appTextBrand
+        // Change to Color.surfacesAccentPrimary for an accent-colored nav bar.
+        static let tint = Color.typographyBrand
 
         // Color of the large title text (when displayMode == .large).
         // iOS renders the large title using the UINavigationBar appearance;
         // setting foreground on the NavigationStack controls this in SwiftUI.
-        static let largeTitle = Color.appTextPrimary
+        static let largeTitle = Color.typographyPrimary
 
         // Color of the inline (small) title text (when displayMode == .inline).
-        static let inlineTitle = Color.appTextPrimary
+        static let inlineTitle = Color.typographyPrimary
 
         // Color of the thin 1px separator line drawn below the nav bar.
         // Set to Color.clear to remove the separator line entirely.
-        static let separator = Color.appBorderDefault
+        static let separator = Color.borderDefault
     }
 
     struct Typography {
@@ -227,7 +227,7 @@ enum NativeBottomSheetStyling {
         // iOS tints this automatically; this value is used for any custom indicator
         // you render yourself inside the sheet content.
         // To control iOS's native indicator color you must use UISheetPresentationController.
-        static let dragIndicator = Color.appBorderDefault
+        static let dragIndicator = Color.borderDefault
     }
 
     struct Layout {
@@ -267,28 +267,28 @@ enum NativeBottomNavStyling {
     struct Colors {
         // Background fill of the tab bar area.
         // This is set via UITabBarAppearance.backgroundColor.
-        // Use appSurfaceBasePrimary for the standard white/black system bar.
-        static let background = Color.appSurfaceBasePrimary
+        // Use surfacesBasePrimary for the standard white/black system bar.
+        static let background = Color.surfacesBasePrimary
 
         // Icon tint for the currently selected (active) tab.
         // This colors the SF Symbol or custom icon in the selected tab item.
-        static let activeIcon = Color.appTextBrand
+        static let activeIcon = Color.typographyBrand
 
         // Text color of the label beneath the currently selected tab icon.
-        static let activeLabel = Color.appTextBrand
+        static let activeLabel = Color.typographyBrand
 
         // Icon tint for all unselected (inactive) tab items.
-        static let inactiveIcon = Color.appTextMuted
+        static let inactiveIcon = Color.typographyMuted
 
         // Text color of the labels beneath all unselected tab items.
-        static let inactiveLabel = Color.appTextMuted
+        static let inactiveLabel = Color.typographyMuted
 
         // Background color of the numeric badge bubble shown on tab icons.
-        // Change to Color.appSurfaceErrorSolid for a standard red notification badge.
-        static let badge = Color.appSurfaceErrorSolid
+        // Change to Color.surfacesErrorSolid for a standard red notification badge.
+        static let badge = Color.surfacesErrorSolid
 
         // Text color of the badge numeral (the count shown in the badge bubble).
-        static let badgeText = Color.appTextOnBrandPrimary // white on red
+        static let badgeText = Color.typographyOnBrandPrimary // white on red
     }
 
     struct Typography {
@@ -358,16 +358,16 @@ enum NativeProgressLoaderStyling {
     struct Colors {
         // The accent color applied to the spinning indicator (indefinite)
         // or the filled portion of the linear progress bar (definite).
-        // Change to Color.appSurfaceBrand for a monochrome loader.
-        static let tint = Color.appSurfaceBrand
+        // Change to Color.surfacesBrandInteractive for a monochrome loader.
+        static let tint = Color.surfacesBrandInteractive
 
         // Background (unfilled) track color for the linear determinate bar.
         // Note: SwiftUI does not directly expose the track color via .tint().
         // AppProgressLoader draws a custom track underneath the native ProgressView.
-        static let track = Color.appSurfaceBaseLowContrast
+        static let track = Color.surfacesBaseLowContrast
 
         // Color of the optional descriptive label rendered below the loader.
-        static let label = Color.appTextSecondary
+        static let label = Color.typographySecondary
     }
 
     struct Layout {
@@ -402,7 +402,7 @@ enum NativeCarouselStyling {
     struct Colors {
         // Fill color of the dot representing the currently visible page.
         // A wider capsule is used for the active dot (see Layout.dotActiveWidth).
-        static let dotActive = Color.appSurfaceBrand
+        static let dotActive = Color.surfacesBrandInteractive
 
         // Fill color of all dots representing pages that are NOT currently visible.
         static let dotInactive = Color.surfacesBaseHighContrast
@@ -446,22 +446,22 @@ enum NativeContextMenuStyling {
         // Text/icon color for standard (non-destructive) menu items.
         // Note: iOS tints .contextMenu items automatically using system colors.
         // This color is used for AppPopoverMenu which renders a custom popover card.
-        static let itemText = Color.appTextPrimary
+        static let itemText = Color.typographyPrimary
 
         // Text/icon color for items marked with role: .destructive.
         // iOS renders .contextMenu destructive items in red automatically.
         // AppPopoverMenu uses this explicitly to color its destructive rows.
-        static let destructiveText = Color.appTextError
+        static let destructiveText = Color.typographyError
 
         // Background fill of the AppPopoverMenu card.
-        static let background = Color.appSurfaceBasePrimary
+        static let background = Color.surfacesBasePrimary
 
         static func background(for colorScheme: ColorScheme) -> Color {
             colorScheme == .dark ? Color.surfacesBaseHighContrast : Color.surfacesBasePrimary
         }
 
         // Color of the 1px divider lines drawn between menu rows in AppPopoverMenu.
-        static let rowDivider = Color.appBorderMuted
+        static let rowDivider = Color.borderMuted
     }
 
     struct Layout {
@@ -560,10 +560,10 @@ enum NativeTooltipStyling {
     struct Colors {
         // Background fill of the tooltip bubble.
         // Use a high-contrast color so the tooltip reads clearly against content.
-        static let background = Color.appSurfaceInversePrimary  // dark in light mode
+        static let background = Color.surfacesInversePrimary  // dark in light mode
 
         // Text color inside the tooltip. Should contrast with `background`.
-        static let text = Color.appTextInversePrimary           // light in light mode
+        static let text = Color.typographyInversePrimary           // light in light mode
     }
 
     struct Layout {
@@ -603,11 +603,11 @@ enum NativeColorPickerStyling {
 
     struct Colors {
         // Foreground color of the label text shown next to the color swatch.
-        static let label = Color.appTextPrimary
+        static let label = Color.typographyPrimary
 
         // Tint applied to interactive elements around the picker trigger.
         // The actual color swatch always shows the currently selected color.
-        static let tint = Color.appSurfaceBrand
+        static let tint = Color.surfacesBrandInteractive
     }
 
     struct Typography {
@@ -630,11 +630,11 @@ enum NativeRangeSliderStyling {
 
     struct Colors {
         // Fill color of the active track segment (the portion between the two thumbs).
-        static let trackActive = Color.appSurfaceBrand
+        static let trackActive = Color.surfacesBrandInteractive
 
         // Fill color of the inactive track segments (left of lower thumb and
         // right of upper thumb).
-        static let trackBackground = Color.appSurfaceBaseLowContrast
+        static let trackBackground = Color.surfacesBaseLowContrast
 
         // Fill color of the thumb circles for both the lower and upper handles.
         // Note: SwiftUI's Slider uses a system white thumb that cannot be recolored
@@ -643,10 +643,10 @@ enum NativeRangeSliderStyling {
         static let thumb = Color.surfacesBrandInteractive
 
         // Shadow/border around each thumb to make it pop against the track.
-        static let thumbShadow = Color.appBorderDefault
+        static let thumbShadow = Color.borderDefault
 
         // Optional label text color for min/max bound labels rendered below the slider.
-        static let label = Color.appTextMuted
+        static let label = Color.typographyMuted
     }
 
     struct Layout {

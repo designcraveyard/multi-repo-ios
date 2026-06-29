@@ -143,7 +143,7 @@ public struct AppPopoverMenu<Label: View>: View {
         // Long-press context menu
         Text("Long-press me")
             .padding()
-            .background(Color.appSurfaceBaseLowContrast, in: RoundedRectangle(cornerRadius: .radiusMD))
+            .background(Color.surfacesBaseLowContrast, in: RoundedRectangle(cornerRadius: .radiusMD))
             .appContextMenu(items: [
                 .item("Edit", icon: AnyView(Ph.pencilSimple.regular)) { },
                 .item("Share", icon: AnyView(Ph.share.regular)) { },
@@ -157,7 +157,7 @@ public struct AppPopoverMenu<Label: View>: View {
         ]) {
             Ph.dotsThreeCircle.regular
                 .iconSize(.lg)
-                .iconColor(.appIconPrimary)
+                .iconColor(.iconsPrimary)
         }
     }
     .padding()

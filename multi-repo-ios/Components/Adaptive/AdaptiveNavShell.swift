@@ -107,7 +107,7 @@ public struct AdaptiveNavShell<Content: View>: View {
 
             // --- Divider ---
             Rectangle()
-                .fill(Color.appBorderMuted)
+                .fill(Color.borderMuted)
                 .frame(width: 1)
 
             // --- Content ---
@@ -137,7 +137,7 @@ public struct AdaptiveNavShell<Content: View>: View {
                     isSidebarExpanded.toggle()
                 }
             } label: {
-                HStack(spacing: CGFloat.spaceSM) {
+                HStack(spacing: CGFloat.space2) {
                     Image(systemName: isSidebarExpanded ? "sidebar.left" : "sidebar.right")
                         .font(.system(size: 18))
                         .frame(width: 24, height: 24)
@@ -150,16 +150,16 @@ public struct AdaptiveNavShell<Content: View>: View {
                     }
                 }
                 .foregroundStyle(Color.typographySecondary)
-                .padding(.horizontal, CGFloat.spaceMD)
+                .padding(.horizontal, CGFloat.space4)
                 .frame(height: 48)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .buttonStyle(.plain)
-            .padding(.horizontal, CGFloat.spaceXS)
+            .padding(.horizontal, CGFloat.space1)
             .accessibilityLabel(isSidebarExpanded ? "Collapse sidebar" : "Expand sidebar")
-            .padding(.bottom, CGFloat.spaceSM)
+            .padding(.bottom, CGFloat.space2)
         }
-        .padding(.top, CGFloat.spaceLG)
+        .padding(.top, CGFloat.space6)
     }
 
     // MARK: - Sidebar Item
@@ -171,7 +171,7 @@ public struct AdaptiveNavShell<Content: View>: View {
         return Button {
             selectedTab = tab.id
         } label: {
-            HStack(spacing: CGFloat.spaceSM) {
+            HStack(spacing: CGFloat.space2) {
                 Image(systemName: iconName)
                     .font(.system(size: 20))
                     .frame(width: 24, height: 24)
@@ -186,14 +186,14 @@ public struct AdaptiveNavShell<Content: View>: View {
                         Text("\(tab.badge)")
                             .font(.appCaptionSmall)
                             .foregroundStyle(Color.typographyOnBrandPrimary)
-                            .padding(.horizontal, CGFloat.spaceXS)
+                            .padding(.horizontal, CGFloat.space1)
                             .padding(.vertical, 2)
                             .background(Color.surfacesBrandInteractive, in: Capsule())
                     }
                 }
             }
             .foregroundStyle(isActive ? Color.surfacesBrandInteractive : Color.typographySecondary)
-            .padding(.horizontal, CGFloat.spaceMD)
+            .padding(.horizontal, CGFloat.space4)
             .frame(height: 48)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
@@ -204,7 +204,7 @@ public struct AdaptiveNavShell<Content: View>: View {
             )
         }
         .buttonStyle(.plain)
-        .padding(.horizontal, CGFloat.spaceXS)
+        .padding(.horizontal, CGFloat.space1)
         .accessibilityLabel(tab.label)
         .accessibilityAddTraits(isActive ? .isSelected : [])
     }

@@ -30,7 +30,7 @@
  *   Ph.bell.regular.iconSize(.md).iconAccessibility(label: "Notifications")
  *
  *   // Raw Phosphor API (when you need a custom non-token size)
- *   Ph.house.regular.color(.appIconPrimary).frame(width: 18, height: 18)
+ *   Ph.house.regular.color(.iconsPrimary).frame(width: 18, height: 18)
  *
  * ── Size tokens (mirrors web IconSize) ─────────────────────────────────────
  *   .xs  = 12pt    .sm = 16pt    .md = 20pt (default)
@@ -165,9 +165,9 @@ public extension View {
             Text("Color tokens").font(.appTitleSmall)
 
             HStack(spacing: CGFloat.space4) {
-                Ph.warning.fill.iconSize(.lg).iconColor(.appTextError)
-                Ph.checkCircle.fill.iconSize(.lg).iconColor(.appTextSuccess)
-                Ph.info.fill.iconSize(.lg).iconColor(.appTextAccent)
+                Ph.warning.fill.iconSize(.lg).iconColor(.typographyError)
+                Ph.checkCircle.fill.iconSize(.lg).iconColor(.typographySuccess)
+                Ph.info.fill.iconSize(.lg).iconColor(.typographyAccent)
             }
 
             Divider()

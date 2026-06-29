@@ -55,7 +55,7 @@ public struct AppDivider: View {
     }
 
     private var lineColor: Color {
-        type == .section ? .appBorderDefault : .appBorderMuted
+        type == .section ? .borderDefault : .borderMuted
     }
 
     private var lineHeight: CGFloat {
@@ -63,7 +63,7 @@ public struct AppDivider: View {
     }
 
     private var verticalLineColor: Color {
-        .appBorderDefault
+        .borderDefault
     }
 
     // MARK: - Body

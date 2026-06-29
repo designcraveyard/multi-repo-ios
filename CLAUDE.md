@@ -45,11 +45,11 @@ open multi-repo-ios.xcodeproj
 
 ## Design Tokens
 
-Use `Color.app*`, `CGFloat.space*`, `CGFloat.radius*`, and `Font.app*` from `DesignTokens.swift` for all styling.
+Use `Color.surfaces*`, `Color.typography*`, `Color.icons*`, `Color.border*`, `CGFloat.space*`, `CGFloat.radius*`, and `Font.app*` from `DesignTokens.swift` for all styling.
 **Never hardcode hex colors, numeric spacing, or px values in view files.**
 
 ```swift
-.background(Color.appSurfaceBasePrimary)
+.background(Color.surfacesBasePrimary)
 .padding(CGFloat.space4)          // 16pt
 .cornerRadius(CGFloat.radiusMD)   // 12pt (Mobile value)
 .font(.appBodyLarge)              // 16pt regular
@@ -58,11 +58,10 @@ Use `Color.app*`, `CGFloat.space*`, `CGFloat.radius*`, and `Font.app*` from `Des
 Run `/design-token-sync` after changes to `multi-repo-nextjs/app/globals.css`.
 
 Token categories in `DesignTokens.swift`:
-- **Colors** — `Color.appSurfaceBasePrimary`, `Color.appTextPrimary`, `Color.appIconPrimary`, etc.
+- **Colors** — `Color.surfacesBasePrimary`, `Color.typographyPrimary`, `Color.iconsPrimary`, etc.
 - **Radius** — `CGFloat.radiusXS` … `CGFloat.radius2XL` (Mobile values only — no breakpoint in SwiftUI)
 - **Spacing** — `CGFloat.space1` (4pt) … `CGFloat.space24` (96pt)
 - **Typography** — `Font.appDisplayLarge` … `Font.appOverlineLarge` (28 named type styles)
-- **Legacy aliases** — `CGFloat.spaceMD`, `Font.appBody`, `Font.appTitle` still work
 
 ---
 
@@ -82,7 +81,7 @@ To add a new icon: run `/add-phosphor-icon <name>` (downloads SVG from CDN, crea
 
 - Use `Ph.<name>.<weight>.iconSize(.<token>)` for all icon usage
 - Default weight: `.regular` · Default size: `.md` (20pt)
-- Use `Color.appIcon*` tokens for color, not hardcoded hex/rgb
+- Use `Color.icons*` tokens for color, not hardcoded hex/rgb
 - No `import` needed — `PhosphorSlim.swift` is in the same module
 
 ### Usage
@@ -92,7 +91,7 @@ To add a new icon: run `/add-phosphor-icon <name>` (downloads SVG from CDN, crea
 Ph.house.regular.iconSize(.md)
 
 // With size and color tokens
-Ph.heart.fill.iconSize(.lg).iconColor(.appTextError)
+Ph.heart.fill.iconSize(.lg).iconColor(.typographyError)
 
 // Bold weight, small size
 Ph.arrowRight.bold.iconSize(.sm)
@@ -104,7 +103,7 @@ Ph.bell.regular.iconSize(.md).iconAccessibility(label: "Notifications")
 Ph.star.regular.iconSize(18)
 
 // Raw Phosphor API (advanced — when token helpers don't fit)
-Ph.house.regular.color(.appIconPrimary).frame(width: 24, height: 24)
+Ph.house.regular.color(.iconsPrimary).frame(width: 24, height: 24)
 ```
 
 ### Size tokens

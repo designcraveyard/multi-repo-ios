@@ -95,7 +95,7 @@ public struct AppStepper: View {
 
             if !isLast {
                 Rectangle()
-                    .fill(Color.appBorderDefault)
+                    .fill(Color.borderDefault)
                     .frame(width: 2)
                     .frame(maxHeight: .infinity)
                     .padding(.bottom, -CGFloat.space2)

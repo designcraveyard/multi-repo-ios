@@ -48,8 +48,8 @@ public struct AppColorPicker: View {
 // MARK: - Preview
 
 #Preview {
-    @Previewable @State var color1 = Color.appSurfaceAccentPrimary
-    @Previewable @State var color2 = Color.appSurfaceSuccessSolid
+    @Previewable @State var color1 = Color.surfacesAccentPrimary
+    @Previewable @State var color2 = Color.surfacesSuccessSolid
 
     VStack(spacing: 24) {
         AppColorPicker(label: "Accent Color", selection: $color1)

@@ -133,9 +133,9 @@ private struct PreviewCard: Identifiable {
 
 #Preview {
     let cards = [
-        PreviewCard(id: 0, color: Color.appSurfaceAccentPrimary),
-        PreviewCard(id: 1, color: Color.appSurfaceSuccessSolid),
-        PreviewCard(id: 2, color: Color.appSurfaceErrorSolid),
+        PreviewCard(id: 0, color: Color.surfacesAccentPrimary),
+        PreviewCard(id: 1, color: Color.surfacesSuccessSolid),
+        PreviewCard(id: 2, color: Color.surfacesErrorSolid),
     ]
 
     VStack(spacing: 40) {

@@ -81,7 +81,7 @@ extension View {
                     Text("Sheet Title").font(.appTitleSmall)
                     Text("Sheet content goes here.")
                         .font(.appBodyMedium)
-                        .foregroundStyle(Color.appTextSecondary)
+                        .foregroundStyle(Color.typographySecondary)
                     Spacer()
                 }
             }

@@ -325,7 +325,7 @@ struct ContentView: View {
                                     VStack(spacing: 4) {
                                         Ph.house.regular
                                             .iconSize(token)
-                                            .iconColor(.appIconPrimary)
+                                            .iconColor(.iconsPrimary)
                                         Text(label)
                                             .font(.appCaptionSmall)
                                             .foregroundStyle(Color.typographyMuted)
@@ -349,7 +349,7 @@ struct ContentView: View {
                                     ("duotone", AnyView(Ph.heart.duotone.iconSize(.lg))),
                                 ], id: \.0) { label, icon in
                                     VStack(spacing: 4) {
-                                        icon.iconColor(.appIconPrimary)
+                                        icon.iconColor(.iconsPrimary)
                                         Text(label)
                                             .font(.appCaptionSmall)
                                             .foregroundStyle(Color.typographyMuted)
@@ -1304,7 +1304,7 @@ struct ContentView: View {
                             VStack(spacing: .space3) {
                                 Ph.checkCircle.fill
                                     .iconSize(.xl)
-                                    .foregroundStyle(Color.appSurfaceSuccessSolid)
+                                    .foregroundStyle(Color.surfacesSuccessSolid)
                                 Text("Action Complete")
                                     .font(.appTitleSmall)
                                 Text("Your changes have been saved.")
@@ -1456,7 +1456,7 @@ struct ContentView: View {
                                     .font(.appBodyMedium)
                                 Ph.dotsThreeCircle.regular
                                     .iconSize(.md)
-                                    .foregroundStyle(Color.appIconPrimary)
+                                    .foregroundStyle(Color.iconsPrimary)
                             }
                             .padding(.space3)
                             .background(
@@ -1469,9 +1469,9 @@ struct ContentView: View {
                     // ── Carousel ─────────────────────────────────────────
                     ShowcaseSection(title: "Carousel — Paged") {
                         let cards = [
-                            CarouselCard(id: 0, color: Color.appSurfaceAccentPrimary, label: "Card 1"),
-                            CarouselCard(id: 1, color: Color.appSurfaceSuccessSolid, label: "Card 2"),
-                            CarouselCard(id: 2, color: Color.appSurfaceErrorSolid, label: "Card 3"),
+                            CarouselCard(id: 0, color: Color.surfacesAccentPrimary, label: "Card 1"),
+                            CarouselCard(id: 1, color: Color.surfacesSuccessSolid, label: "Card 2"),
+                            CarouselCard(id: 2, color: Color.surfacesErrorSolid, label: "Card 3"),
                         ]
                         AppCarousel(items: cards) { card in
                             RoundedRectangle(cornerRadius: .radiusLG)
@@ -1487,9 +1487,9 @@ struct ContentView: View {
 
                     ShowcaseSection(title: "Carousel — Scroll Snap") {
                         let cards = [
-                            CarouselCard(id: 0, color: Color.appSurfaceAccentPrimary, label: "Snap 1"),
-                            CarouselCard(id: 1, color: Color.appSurfaceSuccessSolid, label: "Snap 2"),
-                            CarouselCard(id: 2, color: Color.appSurfaceErrorSolid, label: "Snap 3"),
+                            CarouselCard(id: 0, color: Color.surfacesAccentPrimary, label: "Snap 1"),
+                            CarouselCard(id: 1, color: Color.surfacesSuccessSolid, label: "Snap 2"),
+                            CarouselCard(id: 2, color: Color.surfacesErrorSolid, label: "Snap 3"),
                         ]
                         AppCarousel(items: cards, style: .scrollSnap) { card in
                             RoundedRectangle(cornerRadius: .radiusLG)
@@ -1510,7 +1510,7 @@ struct ContentView: View {
                                 VStack(spacing: .space1) {
                                     Ph.heart.regular
                                         .iconSize(.lg)
-                                        .foregroundStyle(Color.appIconPrimary)
+                                        .foregroundStyle(Color.iconsPrimary)
                                     Text("Tap me")
                                         .font(.appCaptionSmall)
                                         .foregroundStyle(Color.typographyMuted)
@@ -1618,7 +1618,7 @@ struct ContentView: View {
                     Button { } label: {
                         Ph.caretLeft.regular
                             .iconSize(.md)
-                            .iconColor(.appIconPrimary)
+                            .iconColor(.iconsPrimary)
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -1626,12 +1626,12 @@ struct ContentView: View {
                         Button { } label: {
                             Ph.magnifyingGlass.regular
                                 .iconSize(.md)
-                                .iconColor(.appIconPrimary)
+                                .iconColor(.iconsPrimary)
                         }
                         Button { } label: {
                             Ph.bell.regular
                                 .iconSize(.md)
-                                .iconColor(.appIconPrimary)
+                                .iconColor(.iconsPrimary)
                         }
                     }
                 }
@@ -1670,7 +1670,7 @@ struct ContentView: View {
                 } label: {
                     Ph.arrowCounterClockwise.regular
                         .iconSize(.md)
-                        .iconColor(.appIconPrimary)
+                        .iconColor(.iconsPrimary)
                 }
                 .accessibilityLabel("Undo")
             }
@@ -1680,7 +1680,7 @@ struct ContentView: View {
                 } label: {
                     Ph.shareNetwork.regular
                         .iconSize(.md)
-                        .iconColor(.appIconPrimary)
+                        .iconColor(.iconsPrimary)
                 }
                 .accessibilityLabel("Share")
 
@@ -1689,7 +1689,7 @@ struct ContentView: View {
                 } label: {
                     Ph.code.regular
                         .iconSize(.md)
-                        .iconColor(.appIconPrimary)
+                        .iconColor(.iconsPrimary)
                 }
                 .accessibilityLabel("View Raw")
 

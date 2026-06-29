@@ -8,7 +8,7 @@
 //   .background(Color.surfacesBasePrimary)
 //   .foregroundStyle(Color.typographyPrimary)
 //   .padding(CGFloat.space4)
-//   .font(.appBody)
+//   .font(.appBodyLarge)
 
 import SwiftUI
 #if canImport(UIKit)
@@ -310,71 +310,6 @@ extension Color {
     /// Figma: Border/Error
     static let borderError                      = adaptive(light: "#DC2626", dark: "#FCA5A5")
 
-    // ── Legacy aliases — keeps existing call-sites compiling ──────────────────
-    // These map old app* names to the new semantic names.
-
-    // Surfaces
-    static var appSurfaceBasePrimary:              Color { surfacesBasePrimary }
-    static var appSurfaceBaseLowContrast:          Color { surfacesBaseLowContrast }
-    static var appSurfaceBaseHighContrast:         Color { surfacesBaseHighContrast }
-    static var appSurfaceInversePrimary:           Color { surfacesInversePrimary }
-    static var appSurfaceInverseLowContrast:       Color { surfacesInverseLowContrast }
-    static var appSurfaceInverseHighContrast:      Color { surfacesInverseHighContrast }
-    static var appSurfaceBrand:                    Color { surfacesBrandInteractive }
-    static var appSurfaceBrandHover:               Color { surfacesBrandInteractiveHover }
-    static var appSurfaceBrandPressed:             Color { surfacesBrandInteractivePressed }
-    static var appSurfaceBrandLowContrast:         Color { surfacesBrandInteractiveLowContrast }
-    static var appSurfaceBrandHighContrast:        Color { surfacesBrandInteractiveHighContrast }
-    static var appSurfaceBrandSecondaryPressed:    Color { surfacesBrandInteractiveLowContrastPressed }
-    static var appSurfaceAccentPrimary:            Color { surfacesAccentPrimary }
-    static var appSurfaceAccentLowContrast:        Color { surfacesAccentLowContrast }
-    static var appSurfaceAccentHighContrast:       Color { surfacesAccentHighContrast }
-    static var appSurfaceSuccessSolid:             Color { surfacesSuccessSolid }
-    static var appSurfaceSuccessHover:             Color { surfacesSuccessSolidHover }
-    static var appSurfaceSuccessPressed:           Color { surfacesSuccessSolidPressed }
-    static var appSurfaceSuccessSubtle:            Color { surfacesSuccessSubtle }
-    static var appSurfaceWarningSolid:             Color { surfacesWarningSolid }
-    static var appSurfaceWarningSubtle:            Color { surfacesWarningSubtle }
-    static var appSurfaceErrorSolid:               Color { surfacesErrorSolid }
-    static var appSurfaceErrorHover:               Color { surfacesErrorSolidHover }
-    static var appSurfaceErrorPressed:             Color { surfacesErrorSolidPressed }
-    static var appSurfaceErrorSubtle:              Color { surfacesErrorSubtle }
-    // Typography
-    static var appTextPrimary:                     Color { typographyPrimary }
-    static var appTextSecondary:                   Color { typographySecondary }
-    static var appTextMuted:                       Color { typographyMuted }
-    static var appTextInversePrimary:              Color { typographyInversePrimary }
-    static var appTextInverseSecondary:            Color { typographyInverseSecondary }
-    static var appTextInverseMuted:                Color { typographyInverseMuted }
-    static var appTextBrand:                       Color { typographyBrand }
-    static var appTextOnBrandPrimary:              Color { typographyOnBrandPrimary }
-    static var appTextAccent:                      Color { typographyAccent }
-    static var appTextSuccess:                     Color { typographySuccess }
-    static var appTextWarning:                     Color { typographyWarning }
-    static var appTextError:                       Color { typographyError }
-    // Icons
-    static var appIconPrimary:                     Color { iconsPrimary }
-    static var appIconSecondary:                   Color { iconsSecondary }
-    static var appIconMuted:                       Color { iconsMuted }
-    static var appIconInversePrimary:              Color { iconsInversePrimary }
-    static var appIconInverseSecondary:            Color { iconsInverseSecondary }
-    static var appIconInverseMuted:                Color { iconsInverseMuted }
-    static var appIconBrand:                       Color { iconsBrand }
-    static var appIconOnBrandPrimary:              Color { iconsOnBrandPrimary }
-    static var appIconSuccess:                     Color { iconsSuccess }
-    static var appIconWarning:                     Color { iconsWarning }
-    static var appIconError:                       Color { iconsError }
-    // Border
-    static var appBorderDefault:                   Color { borderDefault }
-    static var appBorderMuted:                     Color { borderMuted }
-    static var appBorderActive:                    Color { borderActive }
-    static var appBorderBrand:                     Color { borderBrand }
-    static var appBorderSuccess:                   Color { borderSuccess }
-    static var appBorderWarning:                   Color { borderWarning }
-    static var appBorderError:                     Color { borderError }
-    // Other legacy
-    static var appBackground:                      Color { surfacesBasePrimary }
-    static var appForeground:                      Color { typographyPrimary }
 }
 
 // MARK: - Spacing Tokens  (Figma Primitives/Dimensions 4px grid)
@@ -384,22 +319,15 @@ extension CGFloat {
     static let space1:  CGFloat = 4
     static let space2:  CGFloat = 8
     static let space3:  CGFloat = 12
-    static let space4:  CGFloat = 16   // == spaceMD
+    static let space4:  CGFloat = 16
     static let space5:  CGFloat = 20
-    static let space6:  CGFloat = 24   // == spaceLG
-    static let space8:  CGFloat = 32   // == spaceXL
+    static let space6:  CGFloat = 24
+    static let space8:  CGFloat = 32
     static let space10: CGFloat = 40
-    static let space12: CGFloat = 48   // == space2XL
+    static let space12: CGFloat = 48
     static let space16: CGFloat = 64
     static let space20: CGFloat = 80
     static let space24: CGFloat = 96
-    // Legacy aliases
-    static let spaceXS:  CGFloat = 4
-    static let spaceSM:  CGFloat = 8
-    static let spaceMD:  CGFloat = 16
-    static let spaceLG:  CGFloat = 24
-    static let spaceXL:  CGFloat = 32
-    static let space2XL: CGFloat = 48
 }
 
 // MARK: - Radius Tokens  (Figma "Simantic-Dimensions" › Mobile values)
@@ -495,13 +423,6 @@ extension Font {
     static let appOverlineMedium: Font = appInter(size: 10, face: InterFontFace.bold)
     static let appOverlineLarge:  Font = appInter(size: 12, face: InterFontFace.bold)
 
-    // ── Legacy aliases — keeps existing call-sites compiling ──────────────────
-    /// Alias → appTitleLarge (28pt bold)
-    static var appTitle:   Font { appTitleLarge }
-    /// Alias → appBodyLarge (16pt regular)
-    static var appBody:    Font { appBodyLarge }
-    /// Alias → appCaptionMedium (12pt regular)
-    static var appCaption: Font { appCaptionMedium }
 }
 
 #if canImport(UIKit)

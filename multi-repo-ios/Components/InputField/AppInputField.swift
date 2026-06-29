@@ -232,7 +232,7 @@ public struct AppInputField: View {
                 if leadingSeparator && (leadingLabel != nil || leadingPicker != nil) {
                     Divider()
                         .frame(width: 1)
-                        .background(Color.appBorderDefault)
+                        .background(Color.borderDefault)
                 }
 
                 // Leading simple icon
@@ -266,7 +266,7 @@ public struct AppInputField: View {
                 if trailingSeparator && (trailingLabel != nil || trailingPicker != nil) {
                     Divider()
                         .frame(width: 1)
-                        .background(Color.appBorderDefault)
+                        .background(Color.borderDefault)
                 }
 
                 // Trailing picker slot (first-class, chip trigger only)

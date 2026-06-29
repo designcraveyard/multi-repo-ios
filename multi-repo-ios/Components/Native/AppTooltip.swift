@@ -128,7 +128,7 @@ extension AppTooltip where TipContent == Text {
         AppTooltip(isPresented: .constant(true), tipText: "Always visible tooltip", arrowEdge: .top) {
             Image(systemName: "heart")
                 .font(.title)
-                .foregroundStyle(Color.appIconPrimary)
+                .foregroundStyle(Color.iconsPrimary)
         }
     }
     .padding()

@@ -99,15 +99,15 @@ private struct AdaptiveSheetModifier<SheetContent: View>: ViewModifier {
                     }
                     .accessibilityLabel("Close")
                 }
-                .padding(.horizontal, CGFloat.spaceMD)
-                .padding(.top, CGFloat.spaceMD)
-                .padding(.bottom, CGFloat.spaceSM)
+                .padding(.horizontal, CGFloat.space4)
+                .padding(.top, CGFloat.space4)
+                .padding(.bottom, CGFloat.space2)
 
                 // Content
                 ScrollView {
                     sheetContent()
-                        .padding(.horizontal, CGFloat.spaceMD)
-                        .padding(.bottom, CGFloat.spaceMD)
+                        .padding(.horizontal, CGFloat.space4)
+                        .padding(.bottom, CGFloat.space4)
                 }
             }
             .frame(maxWidth: modalMaxWidth, maxHeight: modalMaxHeight)
@@ -151,7 +151,7 @@ extension View {
         Button("Open Sheet") { show = true }
     }
     .adaptiveSheet(isPresented: $show, title: "Edit Profile") {
-        VStack(alignment: .leading, spacing: CGFloat.spaceMD) {
+        VStack(alignment: .leading, spacing: CGFloat.space4) {
             Text("Sheet content goes here.")
                 .font(.appBodyMedium)
                 .foregroundStyle(Color.typographySecondary)
@@ -170,7 +170,7 @@ extension View {
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(Color.surfacesBasePrimary)
     .adaptiveSheet(isPresented: $show, title: "Edit Profile") {
-        VStack(alignment: .leading, spacing: CGFloat.spaceMD) {
+        VStack(alignment: .leading, spacing: CGFloat.space4) {
             Text("Modal content goes here on iPad/macOS.")
                 .font(.appBodyMedium)
                 .foregroundStyle(Color.typographySecondary)

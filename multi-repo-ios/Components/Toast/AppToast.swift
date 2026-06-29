@@ -299,5 +299,5 @@ public extension View {
         )
     }
     .padding(CGFloat.space4)
-    .background(Color.appBorderDefault)
+    .background(Color.borderDefault)
 }
